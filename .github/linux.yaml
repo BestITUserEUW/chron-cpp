@@ -1,0 +1,93 @@
+name: linux
+
+on: [push, pull_request]
+
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: llvm
+            compiler-version: 16
+            cxx: 20
+          - compiler: llvm
+            compiler-version: 17
+            cxx: 20
+          - compiler: llvm
+            compiler-version: 18
+            cxx: 23
+          - compiler: gcc
+            compiler-version: 13
+            cxx: 20
+          - compiler: gcc
+            compiler-version: 14
+            cxx: 23
+    name: "${{ github.job }} (C++${{ matrix.cxx }}-${{ matrix.compiler }}-${{ matrix.compiler-version }})"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: "${{ github.job }}-${{ matrix.compiler }}-${{ matrix.compiler-version }}"
+          max-size: "2G"
+      - name: Compile
+        run: |
+          if [[ "${{ matrix.compiler }}" == "llvm" ]]; then
+            export CC=clang-${{ matrix.compiler-version }}
+            export CXX=clang++-${{ matrix.compiler-version }}
+          elif [[ "${{ matrix.compiler }}" == "gcc" ]]; then
+            export CC=gcc-${{ matrix.compiler-version }}
+            export CXX=g++-${{ matrix.compiler-version }}
+          fi
+          sudo ln -s $(which ccache) /usr/local/bin/$CC
+          sudo ln -s $(which ccache) /usr/local/bin/$CXX
+          $CXX --version
+          cmake -B build -G Ninja -DCMAKE_CXX_STANDARD=${{ matrix.cxx }} -DORYX_CRT_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+      - name: Run tests
+        run: |
+          ./build/chron-cpp_tests --success
+  linux-valgrind:
+    name: "Valgrind leak checks"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y valgrind
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: "${{ github.job }}-valgrind-checks"
+          max-size: "2G"
+      - name: Compile
+        run: |
+          cmake -B build -G Ninja -DORYX_CRT_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+      - name: Run tests
+        run: |
+          valgrind --leak-check=full --error-exitcode=1 ./build/chron-cpp_tests
