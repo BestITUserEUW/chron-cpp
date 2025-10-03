@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <array>
+#include <span>
 
 #include "time_types.hpp"
 

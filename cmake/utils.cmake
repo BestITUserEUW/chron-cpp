@@ -2,6 +2,12 @@ function(oryx_enable_addr_sanitizer target_name)
     if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         message(FATAL_ERROR "Sanitizer supported only for gcc/clang!")
     endif()
+
+    # Fix for asan having trouble with <regex>
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(${target_name} PRIVATE -Wno-maybe-uninitialized)
+    endif()
+
     message(STATUS "Address sanitizer enabled!")
     target_compile_options(${target_name} PRIVATE -fsanitize=address,undefined)
     target_compile_options(${target_name} PRIVATE -fno-sanitize=signed-integer-overflow)
@@ -15,6 +21,7 @@ function(oryx_enable_thread_sanitizer target_name)
     if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         message(FATAL_ERROR "Sanitizer supported only for gcc/clang!")
     endif()
+
     message(STATUS "Thread sanitizer enabled!")
     target_compile_options(${target_name} PRIVATE -fsanitize=thread)
     target_compile_options(${target_name} PRIVATE -fno-omit-frame-pointer)

@@ -1,9 +1,9 @@
 name: windows
 
-on: [ push, pull_request ]
+on: [push, pull_request]
 
-env: 
-    VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+env:
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
 jobs:
   windows-msvc:
@@ -23,7 +23,7 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
       - name: Compile
         run: |
-          cmake -B build -DORYX_CRT_BUILD_TESTS=ON -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -DORYX_CHRON_BUILD_TESTS=ON -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=Release
           cmake --build build
       - name: Run tests
         run: |
