@@ -1,8 +1,8 @@
-# cron-cpp
+# cron-cpp ![C++](https://img.shields.io/badge/c++-%2300599C.svg?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 
-## WARNING!: Still in Development expect changes
+**cron-cpp** is a C++20 scheduling library using cron formatting. 
 
-This Library is a C++20 / C++23 (knockoff / fork) of [libcron](https://github.com/PerMalmberg/libcron).
+This library is completely based on [libcron](https://github.com/PerMalmberg/libcron).
 
 ## Differences from libcron
 
