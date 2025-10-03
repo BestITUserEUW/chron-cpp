@@ -174,7 +174,7 @@ private:
     bool first_tick_{true};
 };
 
-template <traits::Clock ClockType>
+template <traits::Clock ClockType = LocalClock>
 using MTScheduler = Scheduler<ClockType, std::mutex>;
 
 }  // namespace oryx::chron

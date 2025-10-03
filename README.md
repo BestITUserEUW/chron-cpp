@@ -16,65 +16,114 @@ This library is completely based on [libcron](https://github.com/PerMalmberg/lib
 chron-cpp offers an easy to use API to add callbacks with corresponding cron-formatted strings:
 
 ```cpp
-#include <chrono>
 #include <thread>
+#include <iostream>
 
 #include <oryx/chron.hpp>
 
 using namespace std::chrono_literals;
 
-oryx::chron::Scheduler scheduler;
+auto main() -> int {
+    oryx::chron::Scheduler scheduler;
 
-scheduler.AddSchedule("Hello from Cron", "* * * * * ?", [=](auto&) {
-	std::cout << "Hello from libcron!\n";
-});
-```
+    scheduler.AddSchedule("Task-1", "* * * * * ?", [](auto&) { std::cout << "Hello World\n"; });
+    for (;;) {
+        scheduler.Tick();
+        std::this_thread::sleep_for(1s);
+    }
 
-To trigger the execution of callbacks, one must call `oryx::chron::Scheduler::Tick` at least once a second to prevent missing schedules:
-
-```cpp
-for(;;)
-{
-	scheduler.Tick();
-	std::this_thread::sleep_for(1s);
+    return 0;
 }
 ```
+
+In order to trigger execution of callbacks one must call `oryx::chron::Scheduler::Tick` at least once a second to prevent missing schedules.
 
 In case there is a lot of time between you call `AddSchedule` and `Tick`, you can call `RecalculateSchedule`.
 
 `oryx::chron::Taskinformation` offers a convenient API to retrieve further information:
 
-- `oryx::chron::TaskInformation::GetDelay()` informs about the delay between planned and actual execution of the callback. Hence, it is possible to ensure that a task was executed within a specific tolerance:
-
 ```cpp
-oryx::chron::Scheduler scheduler;
+#include <thread>
+#include <iostream>
 
-scheduler.AddSchedule("Hello from Cron", "* * * * * ?", [=](auto& task_info) {
-	using namespace std::chrono_literals;
-	if (task_info.GetDelay() >= 1s)
-	{
-		std::cout << "The Task was executed too late...\n";
-	}
-});
+#include <oryx/chron.hpp>
+#include "oryx/chron/task.hpp"
+
+using namespace std::chrono_literals;
+
+auto main() -> int {
+    oryx::chron::Scheduler scheduler;
+
+    scheduler.AddSchedule("Task-1", "* * * * * ?", [](const oryx::chron::TaskInformation& task_info) {
+        if (task_info.GetDelay() >= 1s) {
+            std::cout << task_info.GetName() << ": my scheduler is ticking to slow\n";
+        }
+    });
+    for (;;) {
+        scheduler.Tick();
+        std::this_thread::sleep_for(2s);
+    }
+
+    return 0;
+}
 ```
 
 ### Adding multiple tasks with individual schedules at once
 
-oryx::chron::Scheduler::AddSchedule needs to sort the underlying container each time you add a schedule. To improve performance when adding many tasks by only sorting once, there is a convinient way to pass either a `std::map<std::string, std::string>`, a `std::vector<std::pair<std::string, std::string>>`, a `std::vector<std::tuple<std::string, std::string>>` or a `std::unordered_map<std::string, std::string>` to `AddSchedule`, where the first element corresponds to the task name and the second element to the task schedule. Only if all schedules in the container are valid, they will be added to `oryx::chron::Scheduler`. The return type is a `std::tuple<bool, std::string, std::string>`, where the boolean is `true` if the schedules have been added or false otherwise. If the schedules have not been added, the second element in the tuple corresponds to the task-name with the given invalid schedule. If there are multiple invalid schedules in the container, `AddSchedule` will abort at the first invalid element: 
+Add schedule needs to sort the underlying container each time you add a schedule. To improve performance when adding a batch of tasks by only sorting once you can also call AddSchedule with:
+
+- `std::map<std::string, std::string>`
+- `std::vector<std::pair<std::string, std::string>>`
+- `std::vector<std::tuple<std::string, std::string>>`
+- `std::unordered_map<std::string, std::string>`
+
+where the first element corresponds to the task name and the second element to the task schedule. Only if all schedules in the container are valid, they will be added to `oryx::chron::Scheduler`. The return type is a `std::tuple<bool, std::string, std::string>`, where the boolean is `true` if the schedules have been added or false otherwise. If the schedules have not been added, the second element in the tuple corresponds to the task-name with the given invalid schedule. If there are multiple invalid schedules in the container, `AddSchedule` will abort at the first invalid element
 
 ```cpp
-std::map<std::string, std::string> name_schedule_map;
-for(int i = 1; i <= 1000; i++)
-{
-	name_schedule_map["Task-" + std::to_string(i)] = "* * * * * ?";
+#include <chrono>
+#include <thread>
+#include <iostream>
+#include <unordered_map>
+
+#include <oryx/chron.hpp>
+
+using namespace std::chrono_literals;
+
+auto main() -> int {
+    oryx::chron::Scheduler scheduler;
+
+    std::unordered_map<std::string, std::string> schedules;
+    for (int i = 1; i <= 50; i++) {
+        schedules["Task-" + std::to_string(i)] = "* * * * * ?";
+    }
+
+    auto res = scheduler.AddSchedule(schedules, [](const oryx::chron::TaskInformation& task_info) {
+        std::cout << task_info.GetName() << ": "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(task_info.GetDelay()) << "\n";
+    });
+
+    for (;;) {
+        scheduler.Tick();
+        std::this_thread::sleep_for(1s);
+    }
+
+    return 0;
 }
-name_schedule_map["Task-1000"] = "invalid";
-auto res = c1.AddSchedule(name_schedule_map, [](auto&) { });
-if (std::get<0>(res) == false)
-{
-	std::cout << "Task " << std::get<1>(res) 
-						<< "has an invalid schedule: " 
-						<< std::get<2>(res) << "\n";
+```
+
+Adding multiple with an invalid schedule:
+
+```cpp
+std::unordered_map<std::string, std::string> schedules;
+for (int i = 1; i <= 50; i++) {
+    schedules["Task-" + std::to_string(i)] = "* * * * * ?";
+}
+schedules["Task-50"] = "invalid";
+
+auto res = scheduler.AddSchedule(
+    schedules, [](const oryx::chron::TaskInformation& task_info) { std::cout << task_info.GetName(); });
+if (std::get<0>(res) == false) {
+    std::cout << "Task " << std::get<1>(res) << "has an invalid schedule: " << std::get<2>(res) << "\n";
 }
 ```
 
@@ -93,27 +142,85 @@ For example, `scheduler.RemoveSchedule("Hello from Cron")` will remove the previ
 
 ### ThreadSafe Scheduler
 
-The scheduler by default is not thread safe if you need a thread safe Scheduler use `MTScheduler`. Alternatively you can also just drop in your own mutex like object. It just needs to satisfy
-`traits::BasicLockable`:
+The scheduler by default is not thread safe if you need a thread safe Scheduler use `MTScheduler`. Alternatively you can also just drop in your own mutex like object. It just needs to satisfy the `traits::BasicLockable` concept.
 
 ```cpp
-oryx::chron::MTScheduler scheduler;
-cron.AddSchedule("Hello from Cron", "* * * * * ?", [=](auto&) {
-	std::cout << "I was called\n";
-});
+#include <atomic>
+#include <csignal>
+#include <string>
+#include <thread>
+#include <iostream>
+#include <thread>
+
+#include <oryx/chron.hpp>
+
+using namespace std::chrono_literals;
+using namespace oryx::chron;
+
+std::atomic<bool> stop_requested{};
+
+void Ticker(MTScheduler<UTCClock>& scheduler) {
+    while (!stop_requested) {
+        scheduler.Tick();
+        std::this_thread::sleep_for(1s);
+    }
+}
+
+auto main() -> int {
+    signal(SIGINT, [](int sig) { stop_requested = true; });
+
+    MTScheduler<UTCClock> scheduler{};
+    std::thread worker{Ticker, std::ref(scheduler)};
+    uint64_t counter{};
+    std::string task_name{};
+    while (!stop_requested) {
+        task_name = "Task-" + std::to_string(counter++);
+        scheduler.AddSchedule(task_name, "* * * * * ?",
+                              [](auto& info) { std::cout << info.GetName() << ": Called\n"; });
+        std::cout << "Scheduled: " << task_name << "\n";
+        std::this_thread::sleep_for(1s);
+    }
+
+    worker.join();
+    std::cout << "Exiting\n";
+    return 0;
+}
 ```
 
 ## Scheduler Clock
 
-The following clock are available for the scheduler:
+The following clocks are available for the scheduler:
 
 - (default) `LocalClock` offsets by system_clocks time
 - `UTCClock` offsets by 0
-- `TzClock` offsets by 0 until a valid timezone has been set with `TrySetTimezone` 
+- `TzClock` offsets by 0 until a valid timezone has been set with `TrySetTimezone`
+
+```cpp
+#include <chrono>
+#include <csignal>
+#include <iostream>
+
+#include <oryx/chron.hpp>
+
+using namespace std::chrono;
+
+auto main() -> int {
+    oryx::chron::Scheduler<oryx::chron::TzClock> scheduler{};
+    auto& clock = scheduler.GetClock();
+
+    if (!clock.TrySetTimezone("Europe/Berlin")) {
+        std::cout << "Failed to set timezone" << "\n";
+        return 1;
+    }
+
+    std::cout << std::format("{:%Y-%m-%d %H:%M:%S}", std::chrono::floor<std::chrono::seconds>(clock.Now())) << '\n';
+    return 0;
+}
+```
 
 ## Supported formatting
 
-This implementation supports cron format, as specified below.  
+This implementation supports cron format, as specified below. 
 
 Each schedule expression conststs of 6 parts, all mandatory. However, if 'day of month' specifies specific days, then 'day of week' is ignored.
 
