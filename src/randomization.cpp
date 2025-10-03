@@ -1,5 +1,6 @@
-#include <oryx/chron/cron_randomization.hpp>
+#include <oryx/chron/randomization.hpp>
 
+#include <algorithm>
 #include <regex>
 #include <map>
 #include <array>
@@ -7,14 +8,14 @@
 #include <iterator>
 
 #include <oryx/chron/time_types.hpp>
-#include <oryx/chron/cron_data.hpp>
+#include <oryx/chron/data.hpp>
 
 namespace oryx::chron {
 
-CronRandomization::CronRandomization()
-    : twister(rd()) {}
+Randomization::Randomization()
+    : twister_(random_device_()) {}
 
-std::tuple<bool, std::string> CronRandomization::parse(const std::string& cron_schedule) {
+auto Randomization::Parse(const std::string& cron_schedule) -> std::tuple<bool, std::string> {
     // Split on space to get each separate part, six parts expected
     const std::regex split{R"#(^\s*(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s*$)#",
                            std::regex_constants::ECMAScript};
@@ -38,14 +39,14 @@ std::tuple<bool, std::string> CronRandomization::parse(const std::string& cron_s
 
         // Replace month names
         auto month = all_sections[5].str();
-        CronData::replace_string_name_with_numeric<Months>(month);
+        Data::ReplaceStringNameWithNumeric<Months>(month);
 
         working_copy += " ";
         working_copy += month;
 
         // Replace day names
         auto dow = all_sections[6].str();
-        CronData::replace_string_name_with_numeric<DayOfWeek>(dow);
+        Data::ReplaceStringNameWithNumeric<DayOfWeek>(dow);
 
         working_copy += " ";
         working_copy += dow;
@@ -58,40 +59,40 @@ std::tuple<bool, std::string> CronRandomization::parse(const std::string& cron_s
 
     if (res) {
         int selected_value = -1;
-        auto second = get_random_in_range<Seconds>(all_sections[1].str(), selected_value);
+        auto second = GetRandomInRange<Seconds>(all_sections[1].str(), selected_value);
         res = second.first;
         final_cron_schedule = second.second;
 
-        auto minute = get_random_in_range<Minutes>(all_sections[2].str(), selected_value);
+        auto minute = GetRandomInRange<Minutes>(all_sections[2].str(), selected_value);
         res &= minute.first;
         final_cron_schedule += " " + minute.second;
 
-        auto hour = get_random_in_range<Hours>(all_sections[3].str(), selected_value);
+        auto hour = GetRandomInRange<Hours>(all_sections[3].str(), selected_value);
         res &= hour.first;
         final_cron_schedule += " " + hour.second;
 
         // Do Month before DayOfMonth to allow capping the allowed range.
-        auto month = get_random_in_range<Months>(all_sections[5].str(), selected_value);
+        auto month = GetRandomInRange<Months>(all_sections[5].str(), selected_value);
         res &= month.first;
 
         std::set<Months> month_range{};
 
         if (selected_value == -1) {
             // Month is not specific, get the range.
-            CronData cr;
-            res &= cr.convert_from_string_range_to_number_range<Months>(all_sections[5].str(), month_range);
+            Data cr;
+            res &= cr.ConvertFromStringRangeToNumberRange<Months>(all_sections[5].str(), month_range);
         } else {
             month_range.emplace(static_cast<Months>(selected_value));
         }
 
-        auto limits = day_limiter(month_range);
+        auto limits = DayLimiter(month_range);
 
-        auto day_of_month = get_random_in_range<DayOfMonth>(all_sections[4].str(), selected_value, limits);
+        auto day_of_month = GetRandomInRange<DayOfMonth>(all_sections[4].str(), selected_value, limits);
 
         res &= day_of_month.first;
         final_cron_schedule += " " + day_of_month.second + " " + month.second;
 
-        auto day_of_week = get_random_in_range<DayOfWeek>(all_sections[6].str(), selected_value);
+        auto day_of_week = GetRandomInRange<DayOfWeek>(all_sections[6].str(), selected_value);
         res &= day_of_week.first;
         final_cron_schedule += " " + day_of_week.second;
     }
@@ -99,24 +100,23 @@ std::tuple<bool, std::string> CronRandomization::parse(const std::string& cron_s
     return {res, final_cron_schedule};
 }
 
-std::pair<int, int> CronRandomization::day_limiter(const std::set<Months>& months) {
-    int max = CronData::value_of(DayOfMonth::Last);
+auto Randomization::DayLimiter(const std::set<Months>& months) -> std::pair<int, int> {
+    int max = Data::ValueOf(DayOfMonth::Last);
 
     for (auto month : months) {
         if (month == Months::February) {
             // Limit to 29 days, possibly causing delaying schedule until next leap year.
             max = std::min(max, 29);
-        } else if (std::find(std::begin(CronData::months_with_31), std::end(CronData::months_with_31), month) ==
-                   std::end(CronData::months_with_31)) {
+        } else if (std::ranges::find(Data::kMonthsWith31, month) == std::end(Data::kMonthsWith31)) {
             // Not among the months with 31 days
             max = std::min(max, 30);
         }
     }
 
-    auto res = std::pair<int, int>{CronData::value_of(DayOfMonth::First), max};
+    auto res = std::pair<int, int>{Data::ValueOf(DayOfMonth::First), max};
 
     return res;
 }
 
-int CronRandomization::cap(int value, int lower, int upper) { return std::max(std::min(value, upper), lower); }
+auto Randomization::Cap(int value, int lower, int upper) -> int { return std::max(std::min(value, upper), lower); }
 }  // namespace oryx::chron

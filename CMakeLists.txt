@@ -64,10 +64,10 @@ file(GLOB_RECURSE ORYX_CHRON_HEADERS
 
 target_sources(${PROJECT_NAME} 
     PRIVATE 
-        src/cron_clock.cpp
-        src/cron_data.cpp
-        src/cron_randomization.cpp
-        src/cron_schedule.cpp
+        src/clock.cpp
+        src/data.cpp
+        src/randomization.cpp
+        src/schedule.cpp
         src/task.cpp
     PUBLIC
         FILE_SET HEADERS

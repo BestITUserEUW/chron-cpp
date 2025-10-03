@@ -30,8 +30,14 @@ enum class Months : uint8_t {
 };
 
 enum class DayOfWeek : uint8_t {
-    // Sunday = 0 ... Saturday = 6
     First = 0,
-    Last = 6,
+    Sunday = First,
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday = 6,
+    Last = Saturday,
 };
 }  // namespace oryx::chron

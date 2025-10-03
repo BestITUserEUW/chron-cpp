@@ -1,4 +1,4 @@
-#include <oryx/chron/cron_schedule.hpp>
+#include <oryx/chron/schedule.hpp>
 
 #include <tuple>
 
@@ -6,8 +6,8 @@ using namespace std::chrono;
 
 namespace oryx::chron {
 
-std::tuple<bool, std::chrono::system_clock::time_point> CronSchedule::calculate_from(
-    const std::chrono::system_clock::time_point& from) const {
+auto Schedule::CalculateFrom(const std::chrono::system_clock::time_point& from) const
+    -> std::tuple<bool, std::chrono::system_clock::time_point> {
     auto curr = from;
 
     bool done = false;
@@ -18,17 +18,17 @@ std::tuple<bool, std::chrono::system_clock::time_point> CronSchedule::calculate_
         year_month_day ymd = floor<days>(curr);
 
         // Add months until one of the allowed days are found, or stay at the current one.
-        if (data.get_months().find(static_cast<Months>(unsigned(ymd.month()))) == data.get_months().end()) {
+        if (data_.GetMonths().find(static_cast<Months>(unsigned(ymd.month()))) == data_.GetMonths().end()) {
             auto next_month = ymd + months{1};
             sys_days s = next_month.year() / next_month.month() / 1;
             curr = s;
             date_changed = true;
         }
         // If all days are allowed (or the field is ignored via '?'), then the 'day of week' takes precedence.
-        else if (data.get_day_of_month().size() != CronData::value_of(DayOfMonth::Last)) {
+        else if (data_.GetDayOfMonth().size() != Data::ValueOf(DayOfMonth::Last)) {
             // Add days until one of the allowed days are found, or stay at the current one.
-            if (data.get_day_of_month().find(static_cast<DayOfMonth>(unsigned(ymd.day()))) ==
-                data.get_day_of_month().end()) {
+            if (data_.GetDayOfMonth().find(static_cast<DayOfMonth>(unsigned(ymd.day()))) ==
+                data_.GetDayOfMonth().end()) {
                 sys_days s = ymd;
                 curr = s;
                 curr += days{1};
@@ -38,8 +38,8 @@ std::tuple<bool, std::chrono::system_clock::time_point> CronSchedule::calculate_
             // Add days until the current weekday is one of the allowed weekdays
             year_month_weekday ymw = floor<days>(curr);
 
-            if (data.get_day_of_week().find(static_cast<DayOfWeek>(ymw.weekday().c_encoding())) ==
-                data.get_day_of_week().end()) {
+            if (data_.GetDayOfWeek().find(static_cast<DayOfWeek>(ymw.weekday().c_encoding())) ==
+                data_.GetDayOfWeek().end()) {
                 sys_days s = ymd;
                 curr = s;
                 curr += days{1};
@@ -48,15 +48,15 @@ std::tuple<bool, std::chrono::system_clock::time_point> CronSchedule::calculate_
         }
 
         if (!date_changed) {
-            auto date_time = to_calendar_time(curr);
-            if (data.get_hours().find(static_cast<Hours>(date_time.hour)) == data.get_hours().end()) {
+            auto date_time = ToCalendarTime(curr);
+            if (data_.GetHours().find(static_cast<Hours>(date_time.hour)) == data_.GetHours().end()) {
                 curr += hours{1};
                 curr -= minutes{date_time.min};
                 curr -= seconds{date_time.sec};
-            } else if (data.get_minutes().find(static_cast<Minutes>(date_time.min)) == data.get_minutes().end()) {
+            } else if (data_.GetMinutes().find(static_cast<Minutes>(date_time.min)) == data_.GetMinutes().end()) {
                 curr += minutes{1};
                 curr -= seconds{date_time.sec};
-            } else if (data.get_seconds().find(static_cast<Seconds>(date_time.sec)) == data.get_seconds().end()) {
+            } else if (data_.GetSeconds().find(static_cast<Seconds>(date_time.sec)) == data_.GetSeconds().end()) {
                 curr += seconds{1};
             } else {
                 done = true;
@@ -76,4 +76,19 @@ std::tuple<bool, std::chrono::system_clock::time_point> CronSchedule::calculate_
 
     return std::make_tuple(max_iterations > 0, curr);
 }
+
+auto Schedule::ToCalendarTime(std::chrono::system_clock::time_point time) -> DateTime {
+    auto daypoint = std::chrono::floor<std::chrono::days>(time);
+    auto ymd = std::chrono::year_month_day(daypoint);           // calendar date
+    auto time_of_day = std::chrono::hh_mm_ss(time - daypoint);  // Yields time_of_day type
+
+    // Obtain individual components as integers
+    return {.year = int(ymd.year()),
+            .month = unsigned(ymd.month()),
+            .day = unsigned(ymd.day()),
+            .hour = static_cast<uint8_t>(time_of_day.hours().count()),
+            .min = static_cast<uint8_t>(time_of_day.minutes().count()),
+            .sec = static_cast<uint8_t>(time_of_day.seconds().count())};
+}
+
 }  // namespace oryx::chron

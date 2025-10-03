@@ -1,5 +1,5 @@
 
-#include <oryx/chron/cron_clock.hpp>
+#include <oryx/chron/clock.hpp>
 
 #ifdef WIN32
     #ifndef NOMINMAX
@@ -12,7 +12,8 @@
 using namespace std::chrono;
 
 namespace oryx::chron {
-std::chrono::seconds LocalClock::utc_offset(std::chrono::system_clock::time_point now) const {
+
+auto LocalClock::UtcOffset(system_clock::time_point now) const -> seconds {
 #ifdef WIN32
     (void)now;
 
@@ -34,26 +35,27 @@ std::chrono::seconds LocalClock::utc_offset(std::chrono::system_clock::time_poin
     return offset;
 }
 
-bool TzClock::setTimezone(std::string_view name) {
-    const std::chrono::time_zone *newZone{nullptr};
+auto TzClock::TrySetTimezone(std::string_view name) -> bool {
+    const time_zone *new_zone{};
 
     try {
-        newZone = std::chrono::locate_zone(name);
+        new_zone = locate_zone(name);
     } catch (std::runtime_error &err) {
         return false;
     }
 
-    std::lock_guard<std::mutex> lock(_mtx);
-    _timezone = newZone;
+    if (!new_zone) return false;
+
+    std::lock_guard lock(mtx_);
+    timezone_ = new_zone;
     return true;
 }
 
-std::chrono::seconds TzClock::utc_offset(std::chrono::system_clock::time_point now) const {
-    using namespace std::chrono;
+auto TzClock::UtcOffset(system_clock::time_point now) const -> seconds {
     // If we don't have a timezone set we use utc
-    std::lock_guard<std::mutex> lock(_mtx);
-    if (_timezone)
-        return _timezone->get_info(now).offset;
+    std::lock_guard lock(mtx_);
+    if (timezone_)
+        return timezone_->get_info(now).offset;
     else
         return 0s;
 }
