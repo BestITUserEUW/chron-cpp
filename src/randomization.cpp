@@ -27,9 +27,8 @@ auto GetRandomInRange(std::string_view section,
     auto result = std::make_pair(true, std::string{});
     selected_value = -1;
 
-    std::cmatch random_match;
-
-    if (std::regex_match(section.cbegin(), section.cend(), random_match, kRandomExpr)) {
+    std::match_results<std::string_view::const_iterator> random_match;
+    if (std::regex_match(section.begin(), section.end(), random_match, kRandomExpr)) {
         // Random range, parse left and right numbers
         auto left = std::stoi(random_match[1].str());
         auto right = std::stoi(random_match[2].str());
