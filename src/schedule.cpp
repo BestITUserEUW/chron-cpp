@@ -24,7 +24,7 @@ auto Schedule::CalculateFrom(const TimePoint& from) const -> std::tuple<bool, Ti
             date_changed = true;
         }
         // If all days are allowed (or the field is ignored via '?'), then the 'day of week' takes precedence.
-        else if (data_.GetDayOfMonth().size() != Data::ValueOf(DayOfMonth::Last)) {
+        else if (data_.GetDayOfMonth().size() != std::to_underlying(DayOfMonth::Last)) {
             // Add days until one of the allowed days are found, or stay at the current one.
             if (data_.GetDayOfMonth().find(static_cast<DayOfMonth>(unsigned(ymd.day()))) ==
                 data_.GetDayOfMonth().end()) {

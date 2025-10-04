@@ -1,10 +1,8 @@
 #pragma once
 
-#include <tuple>
-
-#include "data.hpp"
-#include "date_time.hpp"
-#include "chrono_types.h"
+#include <oryx/chron/data.hpp>
+#include <oryx/chron/date_time.hpp>
+#include <oryx/chron/chrono_types.hpp>
 
 namespace oryx::chron {
 class Schedule {

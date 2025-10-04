@@ -8,10 +8,11 @@
 #include <map>
 #include <vector>
 
-#include "traits.hpp"
-#include "task.hpp"
-#include "clock.hpp"
-#include "chrono_types.h"
+#include <oryx/chron/traits.hpp>
+#include <oryx/chron/task.hpp>
+#include <oryx/chron/clock.hpp>
+#include <oryx/chron/chrono_types.hpp>
+#include <oryx/chron/data.hpp>
 
 namespace oryx::chron {
 namespace details {
@@ -24,12 +25,14 @@ public:
 
 }  // namespace details
 
-template <traits::Clock ClockType = LocalClock, traits::BasicLockable LockType = details::NullMutex>
+template <traits::Clock ClockType = LocalClock,
+          traits::BasicLockable MutexType = details::NullMutex,
+          DataCachePolicy CachePolicy = DataCachePolicy::kUseCache>
 class Scheduler {
 public:
     // Schedule management
     auto AddSchedule(std::string name, const std::string& schedule, Task::TaskFn work) -> bool {
-        auto data = Data::Create(schedule);
+        auto data = Data::Create<CachePolicy>(schedule);
         if (!data.IsValid()) {
             return false;
         }
@@ -55,7 +58,7 @@ public:
         tasks.reserve(name_schedule_map.size());
 
         for (const auto& [name, schedule] : name_schedule_map) {
-            auto data = Data::Create(schedule);
+            auto data = Data::Create<CachePolicy>(schedule);
             is_valid = data.IsValid();
             if (is_valid) {
                 Task task(std::move(name), Schedule(std::move(data)), work);
@@ -168,13 +171,13 @@ private:
     void UnsafeSortTasks() { std::ranges::sort(tasks_, std::less<>{}); }
 
     std::vector<Task> tasks_;
-    mutable std::mutex tasks_mtx_;
+    mutable MutexType tasks_mtx_;
     ClockType clock_;
     TimePoint last_tick_;
     bool first_tick_{true};
 };
 
 template <traits::Clock ClockType = LocalClock>
-using MTScheduler = Scheduler<ClockType, std::mutex>;
+using MTScheduler = Scheduler<ClockType, std::mutex, DataCachePolicy::kUseCacheThreadSafe>;
 
 }  // namespace oryx::chron

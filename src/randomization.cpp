@@ -9,15 +9,11 @@
 
 #include <oryx/chron/time_types.hpp>
 #include <oryx/chron/data.hpp>
+#include <oryx/chron/details/ctre.hpp>
+#include <oryx/chron/details/string_cast.hpp>
 
 namespace oryx::chron {
 namespace {
-
-const std::regex kRandomExpr{R"#([rR]\((\d+)\-(\d+)\))#", std::regex_constants::ECMAScript};
-
-auto ToView(const std::smatch& match, size_t idx) -> std::string_view {
-    return {&*match[idx].first, static_cast<size_t>(match[idx].length())};
-}
 
 template <typename T>
 auto GetRandomInRange(std::string_view section,
@@ -27,11 +23,10 @@ auto GetRandomInRange(std::string_view section,
     auto result = std::make_pair(true, std::string{});
     selected_value = -1;
 
-    std::match_results<std::string_view::const_iterator> random_match;
-    if (std::regex_match(section.begin(), section.end(), random_match, kRandomExpr)) {
+    if (auto match = ctre::match<R"#([rR]\((\d+)\-(\d+)\))#">(section)) {
         // Random range, parse left and right numbers
-        auto left = std::stoi(random_match[1].str());
-        auto right = std::stoi(random_match[2].str());
+        auto left = details::StringCast<int>(match.get<1>().to_view());
+        auto right = details::StringCast<int>(match.get<2>().to_view());
 
         // Apply limit if provided
         if (limit.first != -1 && limit.second != -1) {
@@ -46,7 +41,7 @@ auto GetRandomInRange(std::string_view section,
         // Remove items outside the limit
         if (limit.first != -1 && limit.second != -1) {
             for (auto it = numbers.begin(); it != numbers.end();) {
-                if (Data::ValueOf(*it) < limit.first || Data::ValueOf(*it) > limit.second) {
+                if (std::to_underlying(*it) < limit.first || std::to_underlying(*it) > limit.second) {
                     it = numbers.erase(it);
                 } else {
                     ++it;
@@ -59,7 +54,7 @@ auto GetRandomInRange(std::string_view section,
             std::uniform_int_distribution<> distribution(0, static_cast<int>(numbers.size() - 1));
             auto it = numbers.begin();
             std::advance(it, distribution(twister));
-            selected_value = Data::ValueOf(*it);
+            selected_value = std::to_underlying(*it);
             result.second = std::to_string(selected_value);
         }
     } else {
@@ -71,7 +66,7 @@ auto GetRandomInRange(std::string_view section,
 }
 
 auto DayLimiter(const std::set<Months>& months) -> std::pair<int, int> {
-    int max = Data::ValueOf(DayOfMonth::Last);
+    int max = std::to_underlying(DayOfMonth::Last);
 
     for (auto month : months) {
         if (month == Months::February) {
@@ -83,7 +78,7 @@ auto DayLimiter(const std::set<Months>& months) -> std::pair<int, int> {
         }
     }
 
-    return {Data::ValueOf(DayOfMonth::First), max};
+    return {std::to_underlying(DayOfMonth::First), max};
 }
 
 }  // namespace
@@ -91,76 +86,67 @@ auto DayLimiter(const std::set<Months>& months) -> std::pair<int, int> {
 Randomization::Randomization()
     : twister_(random_device_()) {}
 
-auto Randomization::Parse(const std::string& cron_schedule) -> std::tuple<bool, std::string> {
+auto Randomization::Parse(std::string_view cron_schedule) -> std::tuple<bool, std::string> {
     // Split on space to get each separate part, six parts expected
-    const std::regex kSplit{R"#(^\s*(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s*$)#",
-                            std::regex_constants::ECMAScript};
-
-    std::smatch all_sections;
-    auto res = std::regex_match(cron_schedule.cbegin(), cron_schedule.cend(), all_sections, kSplit);
-
+    auto matcher = ctre::match<R"#(^\s*(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s*$)#">;
     // Replace text with numbers
     std::string working_copy{};
 
-    if (res) {
+    if (auto match = matcher(cron_schedule)) {
         // Replace month and day names first
-        auto month = all_sections[5].str();
+        auto month = match.get<5>().to_string();
         Data::ReplaceStringNameWithNumeric<Months>(month);
 
-        auto dow = all_sections[6].str();
+        auto dow = match.get<6>().to_string();
         Data::ReplaceStringNameWithNumeric<DayOfWeek>(dow);
 
         // Merge all sections into one string
-        working_copy = std::format("{} {} {} {} {} {}", ToView(all_sections, 1), ToView(all_sections, 2),
-                                   ToView(all_sections, 3), ToView(all_sections, 4), month, dow);
+        working_copy = std::format("{} {} {} {} {} {}", match.get<1>().to_view(), match.get<2>().to_view(),
+                                   match.get<3>().to_view(), match.get<4>().to_view(), month, dow);
     }
 
     std::string final_cron_schedule{};
-
-    // Split again on space
-    res = res && std::regex_match(working_copy.cbegin(), working_copy.cend(), all_sections, kSplit);
-
-    if (res) {
+    bool success{};
+    if (auto match = matcher(working_copy)) {
         int selected_value = -1;
-        auto second = GetRandomInRange<Seconds>(ToView(all_sections, 1), selected_value, twister_);
-        res = second.first;
+        auto second = GetRandomInRange<Seconds>(match.get<1>().to_view(), selected_value, twister_);
+        success = second.first;
         final_cron_schedule = second.second;
 
-        auto minute = GetRandomInRange<Minutes>(ToView(all_sections, 2), selected_value, twister_);
-        res &= minute.first;
+        auto minute = GetRandomInRange<Minutes>(match.get<2>().to_view(), selected_value, twister_);
+        success &= minute.first;
         final_cron_schedule += " " + minute.second;
 
-        auto hour = GetRandomInRange<Hours>(ToView(all_sections, 3), selected_value, twister_);
-        res &= hour.first;
+        auto hour = GetRandomInRange<Hours>(match.get<3>().to_view(), selected_value, twister_);
+        success &= hour.first;
         final_cron_schedule += " " + hour.second;
 
         // Do Month before DayOfMonth to allow capping the allowed range.
-        auto month = GetRandomInRange<Months>(ToView(all_sections, 5), selected_value, twister_);
-        res &= month.first;
+        auto month = GetRandomInRange<Months>(match.get<5>().to_view(), selected_value, twister_);
+        success &= month.first;
 
         std::set<Months> month_range{};
-
         if (selected_value == -1) {
             // Month is not specific, get the range.
             Data cr;
-            res &= cr.ConvertFromStringRangeToNumberRange<Months>(all_sections[5].str(), month_range);
+            success &= cr.ConvertFromStringRangeToNumberRange<Months>(match.get<5>().to_string(), month_range);
         } else {
             month_range.emplace(static_cast<Months>(selected_value));
         }
 
         auto limits = DayLimiter(month_range);
 
-        auto day_of_month = GetRandomInRange<DayOfMonth>(ToView(all_sections, 4), selected_value, twister_, limits);
+        auto day_of_month = GetRandomInRange<DayOfMonth>(match.get<4>().to_view(), selected_value, twister_, limits);
 
-        res &= day_of_month.first;
+        success &= day_of_month.first;
         final_cron_schedule += " " + day_of_month.second + " " + month.second;
 
-        auto day_of_week = GetRandomInRange<DayOfWeek>(ToView(all_sections, 6), selected_value, twister_);
-        res &= day_of_week.first;
+        auto day_of_week = GetRandomInRange<DayOfWeek>(match.get<6>().to_view(), selected_value, twister_);
+        success &= day_of_week.first;
         final_cron_schedule += " " + day_of_week.second;
     }
 
-    return {res, final_cron_schedule};
+    return {success, final_cron_schedule};
 }
 
 }  // namespace oryx::chron

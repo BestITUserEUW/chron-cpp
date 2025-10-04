@@ -2,23 +2,11 @@
 
 #include <oryx/chron/scheduler.hpp>
 #include <oryx/chron/data.hpp>
+#include <oryx/chron/details/any_of.hpp>
+#include <oryx/chron/details/all_of.hpp>
 
 using namespace oryx::chron;
 using namespace std::chrono;
-
-namespace {
-
-template <typename T>
-auto HasValueRange(const std::set<T>& set, uint8_t low, uint8_t high) -> bool {
-    bool found = true;
-    for (auto i = low; found && i <= high; ++i) {
-        found &= set.find(static_cast<T>(i)) != set.end();
-    }
-
-    return found;
-}
-
-}  // namespace
 
 SCENARIO("Numerical inputs") {
     GIVEN("Valid numerical inputs") {
@@ -27,15 +15,15 @@ SCENARIO("Numerical inputs") {
                 auto c = Data::Create("* * * * * ?");
                 REQUIRE(c.IsValid());
                 REQUIRE(c.GetSeconds().size() == 60);
-                REQUIRE(HasValueRange(c.GetSeconds(), 0, 59));
+                REQUIRE(details::AllOf(c.GetSeconds(), 0, 59));
                 REQUIRE(c.GetMinutes().size() == 60);
-                REQUIRE(HasValueRange(c.GetMinutes(), 0, 59));
+                REQUIRE(details::AllOf(c.GetMinutes(), 0, 59));
                 REQUIRE(c.GetHours().size() == 24);
-                REQUIRE(HasValueRange(c.GetHours(), 0, 23));
+                REQUIRE(details::AllOf(c.GetHours(), 0, 23));
                 REQUIRE(c.GetDayOfMonth().size() == 31);
-                REQUIRE(HasValueRange(c.GetDayOfMonth(), 1, 31));
+                REQUIRE(details::AllOf(c.GetDayOfMonth(), 1, 31));
                 REQUIRE(c.GetDayOfWeek().size() == 7);
-                REQUIRE(HasValueRange(c.GetDayOfWeek(), 0, 6));
+                REQUIRE(details::AllOf(c.GetDayOfWeek(), 0, 6));
             }
         }
         AND_WHEN("Using full forward range") {
@@ -47,7 +35,7 @@ SCENARIO("Numerical inputs") {
                 REQUIRE(c.GetHours().size() == 24);
                 REQUIRE(c.GetDayOfMonth().size() == 31);
                 REQUIRE(c.GetDayOfWeek().size() == 7);
-                REQUIRE(HasValueRange(c.GetSeconds(), 0, 59));
+                REQUIRE(details::AllOf(c.GetSeconds(), 0, 59));
             }
         }
         AND_WHEN("Using partial range") {
@@ -59,7 +47,7 @@ SCENARIO("Numerical inputs") {
                 REQUIRE(c.GetHours().size() == 24);
                 REQUIRE(c.GetDayOfMonth().size() == 11);
                 REQUIRE(c.GetDayOfWeek().size() == 7);
-                REQUIRE(HasValueRange(c.GetDayOfMonth(), 20, 30));
+                REQUIRE(details::AllOf(c.GetDayOfMonth(), 20, 30));
             }
         }
         AND_WHEN("Using backward range") {
@@ -111,50 +99,50 @@ SCENARIO("Literal input") {
             THEN("Range is valid") {
                 auto c = Data::Create("* * * * JAN-MAR ?");
                 REQUIRE(c.IsValid());
-                REQUIRE(HasValueRange(c.GetMonths(), 1, 3));
+                REQUIRE(details::AllOf(c.GetMonths(), 1, 3));
             }
             AND_THEN("Range is valid") {
                 auto c = Data::Create("* * * ? * SUN-FRI");
                 REQUIRE(c.IsValid());
-                REQUIRE(HasValueRange(c.GetDayOfWeek(), 0, 5));
+                REQUIRE(details::AllOf(c.GetDayOfWeek(), 0, 5));
             }
         }
         AND_WHEN("Using both range and specific month") {
             THEN("Range is valid") {
                 auto c = Data::Create("* * * * JAN-MAR,DEC ?");
                 REQUIRE(c.IsValid());
-                REQUIRE(HasValueRange(c.GetMonths(), 1, 3));
-                REQUIRE_FALSE(Data::HasAnyInRange(c.GetMonths(), 4, 11));
-                REQUIRE(HasValueRange(c.GetMonths(), 12, 12));
+                REQUIRE(details::AllOf(c.GetMonths(), 1, 3));
+                REQUIRE_FALSE(details::AnyOf(c.GetMonths(), 4, 11));
+                REQUIRE(details::AllOf(c.GetMonths(), 12, 12));
             }
             AND_THEN("Range is valid") {
                 auto c = Data::Create("* * * ? JAN-MAR,DEC FRI,MON,THU");
                 REQUIRE(c.IsValid());
-                REQUIRE(HasValueRange(c.GetMonths(), 1, 3));
-                REQUIRE_FALSE(Data::HasAnyInRange(c.GetMonths(), 4, 11));
-                REQUIRE(HasValueRange(c.GetMonths(), 12, 12));
-                REQUIRE(HasValueRange(c.GetDayOfWeek(), 5, 5));
-                REQUIRE(HasValueRange(c.GetDayOfWeek(), 1, 1));
-                REQUIRE(HasValueRange(c.GetDayOfWeek(), 4, 4));
-                REQUIRE_FALSE(Data::HasAnyInRange(c.GetDayOfWeek(), 0, 0));
-                REQUIRE_FALSE(Data::HasAnyInRange(c.GetDayOfWeek(), 2, 3));
-                REQUIRE_FALSE(Data::HasAnyInRange(c.GetDayOfWeek(), 6, 6));
+                REQUIRE(details::AllOf(c.GetMonths(), 1, 3));
+                REQUIRE_FALSE(details::AnyOf(c.GetMonths(), 4, 11));
+                REQUIRE(details::AllOf(c.GetMonths(), 12, 12));
+                REQUIRE(details::AllOf(c.GetDayOfWeek(), 5, 5));
+                REQUIRE(details::AllOf(c.GetDayOfWeek(), 1, 1));
+                REQUIRE(details::AllOf(c.GetDayOfWeek(), 4, 4));
+                REQUIRE_FALSE(details::AnyOf(c.GetDayOfWeek(), 0, 0));
+                REQUIRE_FALSE(details::AnyOf(c.GetDayOfWeek(), 2, 3));
+                REQUIRE_FALSE(details::AnyOf(c.GetDayOfWeek(), 6, 6));
             }
         }
         AND_WHEN("Using backward range") {
             THEN("Range is valid") {
                 auto c = Data::Create("* * * ? APR-JAN *");
                 REQUIRE(c.IsValid());
-                REQUIRE(HasValueRange(c.GetMonths(), 4, 12));
-                REQUIRE(HasValueRange(c.GetMonths(), 1, 1));
-                REQUIRE_FALSE(Data::HasAnyInRange(c.GetMonths(), 2, 3));
+                REQUIRE(details::AllOf(c.GetMonths(), 4, 12));
+                REQUIRE(details::AllOf(c.GetMonths(), 1, 1));
+                REQUIRE_FALSE(details::AnyOf(c.GetMonths(), 2, 3));
             }
             AND_THEN("Range is valid") {
                 auto c = Data::Create("* * * ? * sat-tue,wed");
                 REQUIRE(c.IsValid());
-                REQUIRE(HasValueRange(c.GetDayOfWeek(), 6, 6));              // Has saturday
-                REQUIRE(HasValueRange(c.GetDayOfWeek(), 0, 3));              // Has sun, mon, tue, wed
-                REQUIRE_FALSE(Data::HasAnyInRange(c.GetDayOfWeek(), 4, 5));  // Does not have thu or fri.
+                REQUIRE(details::AllOf(c.GetDayOfWeek(), 6, 6));        // Has saturday
+                REQUIRE(details::AllOf(c.GetDayOfWeek(), 0, 3));        // Has sun, mon, tue, wed
+                REQUIRE_FALSE(details::AnyOf(c.GetDayOfWeek(), 4, 5));  // Does not have thu or fri.
             }
         }
     }
@@ -175,18 +163,18 @@ SCENARIO("Using step syntax") {
             THEN("Range is valid") {
                 auto c = Data::Create("* * * * JAN/2 ?");
                 REQUIRE(c.IsValid());
-                REQUIRE(HasValueRange(c.GetMonths(), 1, 1));
-                REQUIRE(HasValueRange(c.GetMonths(), 3, 3));
-                REQUIRE(HasValueRange(c.GetMonths(), 5, 5));
-                REQUIRE(HasValueRange(c.GetMonths(), 7, 7));
-                REQUIRE(HasValueRange(c.GetMonths(), 9, 9));
-                REQUIRE(HasValueRange(c.GetMonths(), 11, 11));
-                REQUIRE_FALSE(Data::HasAnyInRange(c.GetMonths(), 2, 2));
-                REQUIRE_FALSE(Data::HasAnyInRange(c.GetMonths(), 4, 4));
-                REQUIRE_FALSE(Data::HasAnyInRange(c.GetMonths(), 6, 6));
-                REQUIRE_FALSE(Data::HasAnyInRange(c.GetMonths(), 8, 8));
-                REQUIRE_FALSE(Data::HasAnyInRange(c.GetMonths(), 10, 10));
-                REQUIRE_FALSE(Data::HasAnyInRange(c.GetMonths(), 12, 12));
+                REQUIRE(details::AllOf(c.GetMonths(), 1, 1));
+                REQUIRE(details::AllOf(c.GetMonths(), 3, 3));
+                REQUIRE(details::AllOf(c.GetMonths(), 5, 5));
+                REQUIRE(details::AllOf(c.GetMonths(), 7, 7));
+                REQUIRE(details::AllOf(c.GetMonths(), 9, 9));
+                REQUIRE(details::AllOf(c.GetMonths(), 11, 11));
+                REQUIRE_FALSE(details::AnyOf(c.GetMonths(), 2, 2));
+                REQUIRE_FALSE(details::AnyOf(c.GetMonths(), 4, 4));
+                REQUIRE_FALSE(details::AnyOf(c.GetMonths(), 6, 6));
+                REQUIRE_FALSE(details::AnyOf(c.GetMonths(), 8, 8));
+                REQUIRE_FALSE(details::AnyOf(c.GetMonths(), 10, 10));
+                REQUIRE_FALSE(details::AnyOf(c.GetMonths(), 12, 12));
             }
         }
     }

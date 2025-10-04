@@ -3,8 +3,8 @@
 #include <functional>
 #include <string>
 
-#include "schedule.hpp"
-#include "chrono_types.h"
+#include <oryx/chron/schedule.hpp>
+#include <oryx/chron/chrono_types.hpp>
 
 namespace oryx::chron {
 

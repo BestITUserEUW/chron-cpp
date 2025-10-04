@@ -4,8 +4,8 @@
 #include <mutex>
 #include <chrono>
 
-#include "traits.hpp"
-#include "chrono_types.h"
+#include <oryx/chron/traits.hpp>
+#include <oryx/chron/chrono_types.hpp>
 
 namespace oryx::chron {
 

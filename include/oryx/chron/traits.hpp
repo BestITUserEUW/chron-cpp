@@ -3,7 +3,7 @@
 #include <chrono>
 #include <concepts>
 
-#include "chrono_types.h"
+#include "chrono_types.hpp"
 
 namespace oryx::chron::traits {
 

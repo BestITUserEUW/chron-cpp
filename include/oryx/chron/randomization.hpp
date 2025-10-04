@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string>
+#include <string_view>
 #include <tuple>
 #include <random>
 
@@ -9,11 +9,10 @@ class Randomization {
 public:
     Randomization();
 
-    // Delete copy operations
     Randomization(const Randomization&) = delete;
     auto operator=(const Randomization&) -> Randomization& = delete;
 
-    auto Parse(const std::string& cron_schedule) -> std::tuple<bool, std::string>;
+    auto Parse(std::string_view cron_schedule) -> std::tuple<bool, std::string>;
 
 private:
     std::random_device random_device_;
