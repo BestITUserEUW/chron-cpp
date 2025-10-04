@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(chron-cpp VERSION 0.1.0 LANGUAGES CXX)
+include(cmake/utils.cmake)
+
+oryx_extract_version()
+
+project(chron-cpp VERSION ${ORYX_CHRON_VERSION} LANGUAGES CXX)
 
 message(STATUS "Build ${PROJECT_NAME}: ${PROJECT_VERSION}")
-
-include(cmake/utils.cmake)
 
 option(ORYX_CHRON_BUILD_SHARED_LIBS "Build shared library" ${BUILD_SHARED_LIBS})
 option(ORYX_CHRON_BUILD_TESTS "Build tests" OFF)

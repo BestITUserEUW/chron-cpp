@@ -30,6 +30,8 @@ template <traits::Clock ClockType = LocalClock,
           DataCachePolicy CachePolicy = DataCachePolicy::kUseCache>
 class Scheduler {
 public:
+    Scheduler() = default;
+
     // Schedule management
     auto AddSchedule(std::string name, const std::string& schedule, Task::TaskFn work) -> bool {
         auto data = Data::Create<CachePolicy>(schedule);
@@ -170,10 +172,10 @@ public:
 private:
     void UnsafeSortTasks() { std::ranges::sort(tasks_, std::less<>{}); }
 
-    std::vector<Task> tasks_;
-    mutable MutexType tasks_mtx_;
-    ClockType clock_;
-    TimePoint last_tick_;
+    std::vector<Task> tasks_{};
+    mutable MutexType tasks_mtx_{};
+    ClockType clock_{};
+    TimePoint last_tick_{};
     bool first_tick_{true};
 };
 
