@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 #include <oryx/chron/data.hpp>
 #include <oryx/chron/date_time.hpp>
 #include <oryx/chron/chrono_types.hpp>

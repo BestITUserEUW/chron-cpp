@@ -75,6 +75,12 @@ target_sources(${PROJECT_NAME}
         FILES ${ORYX_CHRON_HEADERS}
 )
 
+# Experimental
+target_precompile_headers(${PROJECT_NAME} PUBLIC
+    <string>
+    <chrono>
+)
+
 if(ORYX_CHRON_SANITIZE_ADDRESS)
     oryx_enable_addr_sanitizer(${PROJECT_NAME})
 elseif(ORYX_CHRON_SANITIZE_THREAD)

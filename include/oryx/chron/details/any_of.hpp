@@ -2,7 +2,8 @@
 
 #include <cstdint>
 #include <set>
-#include <utility>
+
+#include <oryx/chron/details/to_underlying.hpp>
 
 namespace oryx::chron::details {
 
@@ -23,7 +24,7 @@ auto AnyOf(const std::set<T>& set, uint8_t low, uint8_t high) -> bool {
 template <typename Enum>
     requires std::is_enum_v<Enum>
 auto AnyOf(const std::set<Enum>& set, Enum low, Enum high) -> bool {
-    for (auto i = std::to_underlying(low); i <= std::to_underlying(high); ++i)
+    for (auto i = details::to_underlying(low); i <= details::to_underlying(high); ++i)
         if (set.contains(static_cast<Enum>(i))) return true;
     return false;
 }

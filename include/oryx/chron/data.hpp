@@ -2,19 +2,21 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <set>
 #include <regex>
 #include <string>
-#include <utility>
 #include <vector>
 #include <array>
 #include <span>
-#include <utility>
+#include <type_traits>
+#include <iterator>
 
 #include <oryx/chron/time_types.hpp>
 #include <oryx/chron/details/string_split.hpp>
 #include <oryx/chron/details/ctre.hpp>
 #include <oryx/chron/details/string_cast.hpp>
+#include <oryx/chron/details/to_underlying.hpp>
 
 namespace oryx::chron {
 
@@ -101,7 +103,7 @@ template <typename T>
 auto Data::ValidateLiteral(const std::string& s, std::set<T>& numbers, std::span<const std::string_view> names)
     -> bool {
     auto parts = details::StringSplit(s, ',');
-    auto value_of_first_name = std::to_underlying(T::First);
+    auto value_of_first_name = details::to_underlying(T::First);
 
     for (auto& name : names) {
         std::regex regex_pattern(name.data(), std::regex_constants::ECMAScript | std::regex_constants::icase);
@@ -145,7 +147,7 @@ template <typename T>
 auto Data::GetStep(std::string_view s, uint8_t& start, uint8_t& step) -> bool {
     if (auto match = ctre::match<R"#((\d+|\*)/(\d+))#">(s)) {
         auto first = match.get<1>().to_view();
-        int raw_start = (first == "*") ? std::to_underlying(T::First) : details::StringCast<int>(first);
+        int raw_start = (first == "*") ? details::to_underlying(T::First) : details::StringCast<int>(first);
         int raw_step = details::StringCast<int>(match.get<2>().to_view());
         if (IsWithinLimits<T>(raw_start, raw_start) && raw_step > 0) {
             start = static_cast<uint8_t>(raw_start);
@@ -158,7 +160,7 @@ auto Data::GetStep(std::string_view s, uint8_t& start, uint8_t& step) -> bool {
 
 template <typename T>
 auto Data::AddFullRange(std::set<T>& set) -> void {
-    for (auto v = std::to_underlying(T::First); v <= std::to_underlying(T::Last); ++v) {
+    for (auto v = details::to_underlying(T::First); v <= details::to_underlying(T::Last); ++v) {
         if (set.find(static_cast<T>(v)) == set.end()) {
             set.emplace(static_cast<T>(v));
         }
@@ -175,8 +177,8 @@ auto Data::AddNumber(std::set<T>& set, int32_t number) -> bool {
 
 template <typename T>
 auto Data::IsWithinLimits(int32_t low, int32_t high) -> bool {
-    return IsBetween(low, std::to_underlying(T::First), std::to_underlying(T::Last)) &&
-           IsBetween(high, std::to_underlying(T::First), std::to_underlying(T::Last));
+    return IsBetween(low, details::to_underlying(T::First), details::to_underlying(T::Last)) &&
+           IsBetween(high, details::to_underlying(T::First), details::to_underlying(T::Last));
 }
 
 template <typename T>
@@ -191,19 +193,19 @@ auto Data::ConvertFromStringRangeToNumberRange(std::string_view range, std::set<
         result = AddNumber<T>(numbers, details::StringCast<int32_t>(range));
     } else if (GetRange<T>(range, left, right)) {
         if (left <= right) {
-            for (auto v = std::to_underlying(left); v <= std::to_underlying(right); ++v) {
+            for (auto v = details::to_underlying(left); v <= details::to_underlying(right); ++v) {
                 result &= AddNumber(numbers, v);
             }
         } else {
-            for (auto v = std::to_underlying(left); v <= std::to_underlying(T::Last); ++v) {
+            for (auto v = details::to_underlying(left); v <= details::to_underlying(T::Last); ++v) {
                 result &= AddNumber(numbers, v);
             }
-            for (auto v = std::to_underlying(T::First); v <= std::to_underlying(right); ++v) {
+            for (auto v = details::to_underlying(T::First); v <= details::to_underlying(right); ++v) {
                 result &= AddNumber(numbers, v);
             }
         }
     } else if (GetStep<T>(range, step_start, step)) {
-        for (auto v = step_start; v <= std::to_underlying(T::Last); v += step) {
+        for (auto v = step_start; v <= details::to_underlying(T::Last); v += step) {
             result &= AddNumber(numbers, v);
         }
     } else {
@@ -216,7 +218,7 @@ auto Data::ConvertFromStringRangeToNumberRange(std::string_view range, std::set<
 template <typename T>
     requires(std::is_same_v<T, Months> || std::is_same_v<T, DayOfWeek>)
 auto Data::ReplaceStringNameWithNumeric(std::string& s) -> std::string& {
-    auto value = std::to_underlying(T::First);
+    auto value = details::to_underlying(T::First);
 
     if constexpr (std::is_same_v<T, Months>) {
         for (auto name : kMonthNames) {

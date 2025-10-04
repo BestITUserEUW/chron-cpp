@@ -11,6 +11,7 @@
 #include <oryx/chron/data.hpp>
 #include <oryx/chron/details/ctre.hpp>
 #include <oryx/chron/details/string_cast.hpp>
+#include <oryx/chron/details/to_underlying.hpp>
 
 namespace oryx::chron {
 namespace {
@@ -41,7 +42,7 @@ auto GetRandomInRange(std::string_view section,
         // Remove items outside the limit
         if (limit.first != -1 && limit.second != -1) {
             for (auto it = numbers.begin(); it != numbers.end();) {
-                if (std::to_underlying(*it) < limit.first || std::to_underlying(*it) > limit.second) {
+                if (details::to_underlying(*it) < limit.first || details::to_underlying(*it) > limit.second) {
                     it = numbers.erase(it);
                 } else {
                     ++it;
@@ -54,7 +55,7 @@ auto GetRandomInRange(std::string_view section,
             std::uniform_int_distribution<> distribution(0, static_cast<int>(numbers.size() - 1));
             auto it = numbers.begin();
             std::advance(it, distribution(twister));
-            selected_value = std::to_underlying(*it);
+            selected_value = details::to_underlying(*it);
             result.second = std::to_string(selected_value);
         }
     } else {
@@ -66,7 +67,7 @@ auto GetRandomInRange(std::string_view section,
 }
 
 auto DayLimiter(const std::set<Months>& months) -> std::pair<int, int> {
-    int max = std::to_underlying(DayOfMonth::Last);
+    int max = details::to_underlying(DayOfMonth::Last);
 
     for (auto month : months) {
         if (month == Months::February) {
@@ -78,7 +79,7 @@ auto DayLimiter(const std::set<Months>& months) -> std::pair<int, int> {
         }
     }
 
-    return {std::to_underlying(DayOfMonth::First), max};
+    return {details::to_underlying(DayOfMonth::First), max};
 }
 
 }  // namespace
