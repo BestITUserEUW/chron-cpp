@@ -11,6 +11,7 @@
 #include "traits.hpp"
 #include "task.hpp"
 #include "clock.hpp"
+#include "chrono_types.h"
 
 namespace oryx::chron {
 namespace details {
@@ -27,7 +28,7 @@ template <traits::Clock ClockType = LocalClock, traits::BasicLockable LockType =
 class Scheduler {
 public:
     // Schedule management
-    auto AddSchedule(std::string name, const std::string& schedule, Task::TaskFunction work) -> bool {
+    auto AddSchedule(std::string name, const std::string& schedule, Task::TaskFn work) -> bool {
         auto data = Data::Create(schedule);
         if (!data.IsValid()) {
             return false;
@@ -45,7 +46,7 @@ public:
     }
 
     template <typename Schedules = std::map<std::string, std::string>>
-    auto AddSchedule(const Schedules& name_schedule_map, Task::TaskFunction work)
+    auto AddSchedule(const Schedules& name_schedule_map, Task::TaskFn work)
         -> std::tuple<bool, std::string, std::string> {
         bool is_valid{true};
         std::tuple<bool, std::string, std::string> result{false, "", ""};
@@ -97,7 +98,7 @@ public:
         for (auto& task : tasks_) task.CalculateNext(clock_.Now() + std::chrono::seconds(1));
     }
 
-    auto Tick(std::chrono::system_clock::time_point now) -> size_t {
+    auto Tick(TimePoint now) -> size_t {
         std::lock_guard lock{tasks_mtx_};
 
         size_t executed_count{};
@@ -142,7 +143,7 @@ public:
 
     auto Tick() -> size_t { return Tick(clock_.Now()); }
 
-    auto TimeUntilNext() const -> std::chrono::system_clock::duration {
+    auto TimeUntilNext() const -> Duration {
         std::lock_guard lock{tasks_mtx_};
         if (tasks_.empty()) {
             return std::chrono::minutes::max();
@@ -153,8 +154,7 @@ public:
     auto GetClock() -> ClockType& { return clock_; }
     auto GetNumTasks() const -> size_t { return tasks_.size(); }
 
-    void GetTimeUntilExpiryForTasks(
-        std::vector<std::tuple<std::string, std::chrono::system_clock::duration>>& status) const {
+    void GetTimeUntilExpiryForTasks(std::vector<std::tuple<std::string, Duration>>& status) const {
         std::lock_guard lock{tasks_mtx_};
         auto now = clock_.Now();
         status.clear();
@@ -170,7 +170,7 @@ private:
     std::vector<Task> tasks_;
     mutable std::mutex tasks_mtx_;
     ClockType clock_;
-    std::chrono::system_clock::time_point last_tick_;
+    TimePoint last_tick_;
     bool first_tick_{true};
 };
 

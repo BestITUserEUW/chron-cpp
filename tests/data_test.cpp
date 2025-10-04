@@ -160,6 +160,15 @@ SCENARIO("Literal input") {
     }
 }
 
+SCENARIO("paring @ expressions works") {
+    REQUIRE(Data::Create("@yearly").IsValid());
+    REQUIRE(Data::Create("@annually").IsValid());
+    REQUIRE(Data::Create("@monthly").IsValid());
+    REQUIRE(Data::Create("@weekly").IsValid());
+    REQUIRE(Data::Create("@daily").IsValid());
+    REQUIRE(Data::Create("@hourly").IsValid());
+}
+
 SCENARIO("Using step syntax") {
     GIVEN("Step inputs") {
         WHEN("Using literal ranges") {

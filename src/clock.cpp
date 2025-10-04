@@ -13,7 +13,7 @@ using namespace std::chrono;
 
 namespace oryx::chron {
 
-auto LocalClock::UtcOffset(system_clock::time_point now) const -> seconds {
+auto LocalClock::UtcOffset(TimePoint now) const -> seconds {
 #ifdef WIN32
     (void)now;
 
@@ -51,7 +51,7 @@ auto TzClock::TrySetTimezone(std::string_view name) -> bool {
     return true;
 }
 
-auto TzClock::UtcOffset(system_clock::time_point now) const -> seconds {
+auto TzClock::UtcOffset(TimePoint now) const -> seconds {
     // If we don't have a timezone set we use utc
     std::lock_guard lock(mtx_);
     if (timezone_)

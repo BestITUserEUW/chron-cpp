@@ -1,9 +1,10 @@
 #pragma once
 
-#include <chrono>
+#include <tuple>
 
 #include "data.hpp"
 #include "date_time.hpp"
+#include "chrono_types.h"
 
 namespace oryx::chron {
 class Schedule {
@@ -11,14 +12,9 @@ public:
     explicit Schedule(Data data)
         : data_(std::move(data)) {}
 
-    Schedule(const Schedule&) = default;
+    auto CalculateFrom(const TimePoint& from) const -> std::tuple<bool, TimePoint>;
 
-    auto operator=(const Schedule&) -> Schedule& = default;
-
-    auto CalculateFrom(const std::chrono::system_clock::time_point& from) const
-        -> std::tuple<bool, std::chrono::system_clock::time_point>;
-
-    static auto ToCalendarTime(std::chrono::system_clock::time_point time) -> DateTime;
+    static auto ToCalendarTime(TimePoint time) -> DateTime;
 
 private:
     Data data_;

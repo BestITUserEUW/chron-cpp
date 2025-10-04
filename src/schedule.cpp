@@ -6,8 +6,7 @@ using namespace std::chrono;
 
 namespace oryx::chron {
 
-auto Schedule::CalculateFrom(const std::chrono::system_clock::time_point& from) const
-    -> std::tuple<bool, std::chrono::system_clock::time_point> {
+auto Schedule::CalculateFrom(const TimePoint& from) const -> std::tuple<bool, TimePoint> {
     auto curr = from;
 
     bool done = false;
@@ -77,7 +76,7 @@ auto Schedule::CalculateFrom(const std::chrono::system_clock::time_point& from) 
     return std::make_tuple(max_iterations > 0, curr);
 }
 
-auto Schedule::ToCalendarTime(std::chrono::system_clock::time_point time) -> DateTime {
+auto Schedule::ToCalendarTime(TimePoint time) -> DateTime {
     auto daypoint = std::chrono::floor<std::chrono::days>(time);
     auto ymd = std::chrono::year_month_day(daypoint);           // calendar date
     auto time_of_day = std::chrono::hh_mm_ss(time - daypoint);  // Yields time_of_day type

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+#include <string>
 #include <set>
 #include <regex>
 #include <string>

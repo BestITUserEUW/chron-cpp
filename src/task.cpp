@@ -1,21 +1,22 @@
 #include <oryx/chron/task.hpp>
 
 #include <format>
+#include "oryx/chron/chrono_types.h"
 
 using namespace std::chrono;
 
 namespace oryx::chron {
 
-Task::Task(std::string name, Schedule schedule, TaskFunction task)
+Task::Task(std::string name, Schedule schedule, TaskFn task)
     : name_(std::move(name)),
       schedule_(std::move(schedule)),
       task_(std::move(task)),
       next_schedule_(),
       delay_(std::chrono::seconds(-1)),
-      last_run_(std::numeric_limits<std::chrono::system_clock::time_point>::min()),
+      last_run_(std::numeric_limits<TimePoint>::min()),
       valid_() {}
 
-void Task::Execute(std::chrono::system_clock::time_point now) {
+void Task::Execute(TimePoint now) {
     // Next Schedule is still the current schedule, calculate delay (actual execution - planned execution)
     delay_ = now - next_schedule_;
 
@@ -23,7 +24,7 @@ void Task::Execute(std::chrono::system_clock::time_point now) {
     task_(*this);
 }
 
-auto Task::CalculateNext(std::chrono::system_clock::time_point from) -> bool {
+auto Task::CalculateNext(TimePoint from) -> bool {
     auto result = schedule_.CalculateFrom(from);
 
     // In case the calculation fails, the task will no longer expire.
@@ -38,8 +39,8 @@ auto Task::CalculateNext(std::chrono::system_clock::time_point from) -> bool {
     return valid_;
 }
 
-auto Task::TimeUntilExpiry(std::chrono::system_clock::time_point now) const -> std::chrono::system_clock::duration {
-    system_clock::duration d{};
+auto Task::TimeUntilExpiry(TimePoint now) const -> Duration {
+    Duration d{};
 
     // Explicitly return 0s instead of a possibly negative duration when it has expired.
     if (now >= next_schedule_) {
@@ -51,11 +52,9 @@ auto Task::TimeUntilExpiry(std::chrono::system_clock::time_point now) const -> s
     return d;
 }
 
-auto Task::IsExpired(std::chrono::system_clock::time_point now) const -> bool {
-    return valid_ && now >= last_run_ && TimeUntilExpiry(now) == 0s;
-}
+auto Task::IsExpired(TimePoint now) const -> bool { return valid_ && now >= last_run_ && TimeUntilExpiry(now) == 0s; }
 
-auto Task::GetStatus(std::chrono::system_clock::time_point now) const -> std::string {
+auto Task::GetStatus(TimePoint now) const -> std::string {
     auto dt = Schedule::ToCalendarTime(next_schedule_);
     auto expires_in = duration_cast<milliseconds>(TimeUntilExpiry(now));
     return std::format("'{}' expires in => {}-{}-{} {}:{}:{}", GetName(), expires_in, dt.year, dt.month, dt.day,
