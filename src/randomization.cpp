@@ -4,8 +4,8 @@
 #include <regex>
 #include <map>
 #include <array>
-#include <algorithm>
 #include <iterator>
+#include <format>
 
 #include <oryx/chron/time_types.hpp>
 #include <oryx/chron/data.hpp>
