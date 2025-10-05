@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace oryx::chron {
 
 inline constexpr int kVersionMajor = 0;
