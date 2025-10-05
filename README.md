@@ -11,6 +11,10 @@ This library is completely based on [libcron](https://github.com/PerMalmberg/lib
 - Time zone clock
 - Automated tests for (clang, gcc, msvc)
 
+## Third party libraries
+
+- [ctre](https://github.com/hanickadot/compile-time-regular-expressions.git)
+
 ## Using the Scheduler
 
 chron-cpp offers an easy to use API to add callbacks with corresponding cron-formatted strings:
