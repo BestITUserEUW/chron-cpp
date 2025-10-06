@@ -23,7 +23,7 @@ jobs:
           - compiler: gcc
             compiler-version: 14
             cxx: 23
-    name: "${{ github.job }} (C++${{ matrix.cxx }}-${{ matrix.compiler }}-${{ matrix.compiler-version }})"
+    name: "${{ github.job }} ${{ matrix.compiler }}-${{ matrix.compiler-version }} C++${{ matrix.cxx }}"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -58,7 +58,43 @@ jobs:
           cmake --build build
       - name: Run tests
         run: |
-          ./build/chron-cpp_tests --success
+          ./build/chron-cpp_tests
+  linux-extra:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "ASan"
+            extra-flags: "-DORYX_CHRON_SANITIZE_ADDRESS=ON"
+          - name: "Optimized Build"
+            extra-flags: "-DCMAKE_CXX_FLAGS=-O3"
+
+    name: "${{ github.job }} ${{ matrix.name }}"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: "${{ github.job }}-${{ matrix.name }}"
+          max-size: "2G"
+      - name: Compile
+        run: |
+          cmake -B build -G Ninja -DORYX_CHRON_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release ${{ matrix.extra-flags || '' }}
+          cmake --build build
+      - name: Run tests
+        run: |
+          valgrind --leak-check=full --error-exitcode=1 ./build/chron-cpp_tests
   linux-valgrind:
     name: "Valgrind leak checks"
     runs-on: ubuntu-latest
