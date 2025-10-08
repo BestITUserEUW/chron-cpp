@@ -1,17 +1,17 @@
+#include <optional>
+
 #include <oryx/chron/schedule.hpp>
-
-#include <tuple>
-
 #include <oryx/chron/details/to_underlying.hpp>
+#include <oryx/chron/chrono_types.hpp>
 
 using namespace std::chrono;
 
 namespace oryx::chron {
 
-auto Schedule::CalculateFrom(const TimePoint& from) const -> std::tuple<bool, TimePoint> {
+auto Schedule::CalculateFrom(const TimePoint& from) const -> std::optional<TimePoint> {
     auto curr = from;
 
-    bool done = false;
+    bool done{};
     auto max_iterations = std::numeric_limits<uint16_t>::max();
 
     while (!done && --max_iterations > 0) {
@@ -74,14 +74,16 @@ auto Schedule::CalculateFrom(const TimePoint& from) const -> std::tuple<bool, Ti
     //  the `tick()` within the same second will never be earlier than schedule time,
     //  and the task will trigger in that `tick()`.
     curr -= curr.time_since_epoch() % seconds{1};
-
-    return std::make_tuple(max_iterations > 0, curr);
+    if (max_iterations > 0) {
+        return curr;
+    }
+    return std::nullopt;
 }
 
 auto Schedule::ToCalendarTime(TimePoint time) -> DateTime {
-    auto daypoint = std::chrono::floor<std::chrono::days>(time);
-    auto ymd = std::chrono::year_month_day(daypoint);           // calendar date
-    auto time_of_day = std::chrono::hh_mm_ss(time - daypoint);  // Yields time_of_day type
+    auto daypoint = floor<days>(time);
+    auto ymd = year_month_day(daypoint);           // calendar date
+    auto time_of_day = hh_mm_ss(time - daypoint);  // Yields time_of_day type
 
     // Obtain individual components as integers
     return {.year = int(ymd.year()),

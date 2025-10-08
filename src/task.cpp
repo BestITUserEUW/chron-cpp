@@ -28,9 +28,9 @@ auto Task::CalculateNext(TimePoint from) -> bool {
     auto result = schedule_.CalculateFrom(from);
 
     // In case the calculation fails, the task will no longer expire.
-    valid_ = std::get<0>(result);
+    valid_ = result.has_value();
     if (valid_) {
-        next_schedule_ = std::get<1>(result);
+        next_schedule_ = result.value();
 
         // Make sure that the task is allowed to run.
         last_run_ = next_schedule_ - 1s;

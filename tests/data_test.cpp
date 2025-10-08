@@ -190,11 +190,11 @@ SCENARIO("Date that exist in one of the months") { REQUIRE(Data::Create("0 0 * 3
 SCENARIO("Replacing text with numbers") {
     {
         std::string s = "SUN-TUE";
-        REQUIRE(Data::ReplaceStringNameWithNumeric<DayOfWeek>(s) == "0-2");
+        REQUIRE(details::ReplaceDayNameWithNumeric(s) == "0-2");
     }
 
     {
         std::string s = "JAN-DEC";
-        REQUIRE(Data::ReplaceStringNameWithNumeric<Months>(s) == "1-12");
+        REQUIRE(details::ReplaceMonthNameWithNumeric(s) == "1-12");
     }
 }

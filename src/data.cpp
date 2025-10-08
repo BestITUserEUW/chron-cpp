@@ -60,8 +60,6 @@ auto Data::Create<DataCachePolicy::kBypassCache>(const std::string& cron_express
 }
 
 void Data::Parse(std::string_view cron_expression) {
-    static const std::regex kSplit{R"#(^\s*(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s*$)#",
-                                   std::regex_constants::ECMAScript};
     static constexpr std::array<DollarExprPair, 6> kShortcuts{
         DollarExprPair("@yearly", "0 0 0 1 1 *"),  DollarExprPair("@annually", "0 0 0 1 1 *"),
         DollarExprPair("@monthly", "0 0 0 1 * *"), DollarExprPair("@weekly", "0 0 0 * * 0"),
@@ -79,8 +77,8 @@ void Data::Parse(std::string_view cron_expression) {
         valid_ &= ValidateNumeric<Minutes>(match.get<2>().to_view(), minutes_);
         valid_ &= ValidateNumeric<Hours>(match.get<3>().to_view(), hours_);
         valid_ &= ValidateNumeric<DayOfMonth>(match.get<4>().to_view(), day_of_month_);
-        valid_ &= ValidateLiteral<Months>(match.get<5>().to_string(), months_, kMonthNames);
-        valid_ &= ValidateLiteral<DayOfWeek>(match.get<6>().to_string(), day_of_week_, kDayNames);
+        valid_ &= ValidateLiteral<Months>(match.get<5>().to_string(), months_, details::kMonthNames);
+        valid_ &= ValidateLiteral<DayOfWeek>(match.get<6>().to_string(), day_of_week_, details::kDayNames);
         valid_ &= CheckDomVsDow(match.get<4>().to_view(), match.get<6>().to_view());
         valid_ &= ValidateDateVsMonths();
     }

@@ -14,16 +14,16 @@ void Test(const char* const random_schedule, bool expect_failure = false) {
 
     for (int i = 0; i < 5000; ++i) {
         auto res = cr.Parse(random_schedule);
-        auto schedule = std::get<1>(res);
+        auto schedule = res.value_or(std::string{});
 
         Scheduler scheduler;
 
         if (expect_failure) {
             // Parsing of random might succeed, but it yields an invalid schedule.
-            auto r = std::get<0>(res) && scheduler.AddSchedule("validate schedule", schedule, [](auto&) {});
+            auto r = res.has_value() && scheduler.AddSchedule("validate schedule", schedule, [](auto&) {});
             REQUIRE_FALSE(r);
         } else {
-            REQUIRE(std::get<0>(res));
+            REQUIRE(res.has_value());
             REQUIRE(scheduler.AddSchedule("validate schedule", schedule, [](auto&) {}));
         }
     }

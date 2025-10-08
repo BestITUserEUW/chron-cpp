@@ -1,7 +1,7 @@
+#include <optional>
 #include <oryx/chron/randomization.hpp>
 
 #include <algorithm>
-#include <regex>
 #include <map>
 #include <array>
 #include <iterator>
@@ -87,7 +87,7 @@ auto DayLimiter(const std::set<Months>& months) -> std::pair<int, int> {
 Randomization::Randomization()
     : twister_(random_device_()) {}
 
-auto Randomization::Parse(std::string_view cron_schedule) -> std::tuple<bool, std::string> {
+auto Randomization::Parse(std::string_view cron_schedule) -> std::optional<std::string> {
     // Split on space to get each separate part, six parts expected
     auto matcher = ctre::match<R"#(^\s*(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s*$)#">;
     // Replace text with numbers
@@ -96,10 +96,10 @@ auto Randomization::Parse(std::string_view cron_schedule) -> std::tuple<bool, st
     if (auto match = matcher(cron_schedule)) {
         // Replace month and day names first
         auto month = match.get<5>().to_string();
-        Data::ReplaceStringNameWithNumeric<Months>(month);
+        details::ReplaceMonthNameWithNumeric(month);
 
         auto dow = match.get<6>().to_string();
-        Data::ReplaceStringNameWithNumeric<DayOfWeek>(dow);
+        details::ReplaceDayNameWithNumeric(dow);
 
         // Merge all sections into one string
         working_copy = std::format("{} {} {} {} {} {}", match.get<1>().to_view(), match.get<2>().to_view(),
@@ -146,8 +146,10 @@ auto Randomization::Parse(std::string_view cron_schedule) -> std::tuple<bool, st
         success &= day_of_week.first;
         final_cron_schedule += " " + day_of_week.second;
     }
-
-    return {success, final_cron_schedule};
+    if (success) {
+        return final_cron_schedule;
+    }
+    return std::nullopt;
 }
 
 }  // namespace oryx::chron

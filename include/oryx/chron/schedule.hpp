@@ -1,6 +1,6 @@
 #pragma once
 
-#include <tuple>
+#include <optional>
 
 #include <oryx/chron/data.hpp>
 #include <oryx/chron/date_time.hpp>
@@ -12,7 +12,7 @@ public:
     explicit Schedule(Data data)
         : data_(std::move(data)) {}
 
-    auto CalculateFrom(const TimePoint& from) const -> std::tuple<bool, TimePoint>;
+    auto CalculateFrom(const TimePoint& from) const -> std::optional<TimePoint>;
 
     static auto ToCalendarTime(TimePoint time) -> DateTime;
 

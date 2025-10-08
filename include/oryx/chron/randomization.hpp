@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string_view>
-#include <tuple>
+#include <optional>
 #include <random>
 
 namespace oryx::chron {
@@ -12,7 +12,7 @@ public:
     Randomization(const Randomization&) = delete;
     auto operator=(const Randomization&) -> Randomization& = delete;
 
-    auto Parse(std::string_view cron_schedule) -> std::tuple<bool, std::string>;
+    auto Parse(std::string_view cron_schedule) -> std::optional<std::string>;
 
 private:
     std::random_device random_device_;

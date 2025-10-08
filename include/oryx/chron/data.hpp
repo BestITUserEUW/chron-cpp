@@ -4,19 +4,18 @@
 #include <string>
 #include <string_view>
 #include <set>
-#include <regex>
 #include <string>
 #include <vector>
 #include <array>
 #include <span>
 #include <type_traits>
-#include <iterator>
 
 #include <oryx/chron/time_types.hpp>
 #include <oryx/chron/details/string_split.hpp>
 #include <oryx/chron/details/ctre.hpp>
 #include <oryx/chron/details/string_cast.hpp>
 #include <oryx/chron/details/to_underlying.hpp>
+#include <oryx/chron/details/time_types_transform.hpp>
 
 namespace oryx::chron {
 
@@ -27,11 +26,6 @@ public:
     static constexpr int kNumberOfLongMonths = 7;
     static constexpr std::array<Months, kNumberOfLongMonths> kMonthsWith31{
         Months::January, Months::March, Months::May, Months::July, Months::August, Months::October, Months::December};
-
-    static constexpr std::array<std::string_view, 12> kMonthNames{"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-                                                                  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"};
-
-    static constexpr std::array<std::string_view, 7> kDayNames{"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
 
     Data() = default;
 
@@ -103,26 +97,15 @@ template <typename T>
 auto Data::ValidateLiteral(const std::string& s, std::set<T>& numbers, std::span<const std::string_view> names)
     -> bool {
     auto parts = details::StringSplit(s, ',');
-    auto value_of_first_name = details::to_underlying(T::First);
-
-    for (auto& name : names) {
-        std::regex regex_pattern(name.data(), std::regex_constants::ECMAScript | std::regex_constants::icase);
-
-        for (auto& part : parts) {
-            std::string replaced;
-            std::regex_replace(std::back_inserter(replaced), part.begin(), part.end(), regex_pattern,
-                               std::to_string(value_of_first_name));
-            part = replaced;
-        }
-        ++value_of_first_name;
+    for (auto& part : parts) {
+        details::ReplaceWithNumeric<T>(part, names);
     }
-
     return ProcessParts(parts, numbers);
 }
 
 template <typename T>
 auto Data::ProcessParts(const std::vector<std::string>& parts, std::set<T>& numbers) -> bool {
-    bool result = true;
+    bool result{true};
     for (auto& part : parts) {
         result &= ConvertFromStringRangeToNumberRange(part, numbers);
     }
@@ -215,28 +198,4 @@ auto Data::ConvertFromStringRangeToNumberRange(std::string_view range, std::set<
     return result;
 }
 
-template <typename T>
-    requires(std::is_same_v<T, Months> || std::is_same_v<T, DayOfWeek>)
-auto Data::ReplaceStringNameWithNumeric(std::string& s) -> std::string& {
-    auto value = details::to_underlying(T::First);
-
-    if constexpr (std::is_same_v<T, Months>) {
-        for (auto name : kMonthNames) {
-            std::regex regex_pattern(name.data(), std::regex_constants::ECMAScript | std::regex_constants::icase);
-            std::string replaced;
-            std::regex_replace(std::back_inserter(replaced), s.begin(), s.end(), regex_pattern, std::to_string(value));
-            s = replaced;
-            ++value;
-        }
-    } else {
-        for (auto name : kDayNames) {
-            std::regex regex_pattern(name.data(), std::regex_constants::ECMAScript | std::regex_constants::icase);
-            std::string replaced;
-            std::regex_replace(std::back_inserter(replaced), s.begin(), s.end(), regex_pattern, std::to_string(value));
-            s = replaced;
-            ++value;
-        }
-    }
-    return s;
-}
 }  // namespace oryx::chron

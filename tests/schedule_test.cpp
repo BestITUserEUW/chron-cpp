@@ -30,9 +30,9 @@ auto Test(const std::string& schedule,
 
         for (size_t i = 0; res && i < expected_next.size(); ++i) {
             auto result = sched.CalculateFrom(curr_from);
-            auto calculated = std::get<1>(result);
+            auto calculated = result.value_or(TimePoint::max());
 
-            res = std::get<0>(result) && calculated == expected_next[i];
+            res = result.has_value() && calculated == expected_next[i];
 
             if (res) {
                 // Add a second to the time so that we move on to the next expected time
@@ -55,8 +55,8 @@ auto Test(const std::string& schedule, system_clock::time_point from, system_clo
     if (res) {
         Schedule sched(c);
         auto result = sched.CalculateFrom(from);
-        auto run_time = std::get<1>(result);
-        res &= std::get<0>(result) && expected_next == run_time;
+        auto run_time = result.value_or(TimePoint::max());
+        res &= result.has_value() && expected_next == run_time;
 
         if (!res) {
             std::cout << "From:       " << from << "\n"
