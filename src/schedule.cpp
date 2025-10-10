@@ -19,17 +19,16 @@ auto Schedule::CalculateFrom(const TimePoint& from) const -> std::optional<TimeP
         year_month_day ymd = floor<days>(curr);
 
         // Add months until one of the allowed days are found, or stay at the current one.
-        if (data_.GetMonths().find(static_cast<Months>(unsigned(ymd.month()))) == data_.GetMonths().end()) {
+        if (data_.months.find(static_cast<Months>(unsigned(ymd.month()))) == data_.months.end()) {
             auto next_month = ymd + months{1};
             sys_days s = next_month.year() / next_month.month() / 1;
             curr = s;
             date_changed = true;
         }
         // If all days are allowed (or the field is ignored via '?'), then the 'day of week' takes precedence.
-        else if (data_.GetDayOfMonth().size() != details::to_underlying(DayOfMonth::Last)) {
+        else if (data_.days.size() != details::to_underlying(Days::Last)) {
             // Add days until one of the allowed days are found, or stay at the current one.
-            if (data_.GetDayOfMonth().find(static_cast<DayOfMonth>(unsigned(ymd.day()))) ==
-                data_.GetDayOfMonth().end()) {
+            if (data_.days.find(static_cast<Days>(unsigned(ymd.day()))) == data_.days.end()) {
                 sys_days s = ymd;
                 curr = s;
                 curr += days{1};
@@ -39,8 +38,7 @@ auto Schedule::CalculateFrom(const TimePoint& from) const -> std::optional<TimeP
             // Add days until the current weekday is one of the allowed weekdays
             year_month_weekday ymw = floor<days>(curr);
 
-            if (data_.GetDayOfWeek().find(static_cast<DayOfWeek>(ymw.weekday().c_encoding())) ==
-                data_.GetDayOfWeek().end()) {
+            if (data_.weeks.find(static_cast<Weeks>(ymw.weekday().c_encoding())) == data_.weeks.end()) {
                 sys_days s = ymd;
                 curr = s;
                 curr += days{1};
@@ -50,14 +48,14 @@ auto Schedule::CalculateFrom(const TimePoint& from) const -> std::optional<TimeP
 
         if (!date_changed) {
             auto date_time = ToCalendarTime(curr);
-            if (data_.GetHours().find(static_cast<Hours>(date_time.hour)) == data_.GetHours().end()) {
+            if (data_.hours.find(static_cast<Hours>(date_time.hour)) == data_.hours.end()) {
                 curr += hours{1};
                 curr -= minutes{date_time.min};
                 curr -= seconds{date_time.sec};
-            } else if (data_.GetMinutes().find(static_cast<Minutes>(date_time.min)) == data_.GetMinutes().end()) {
+            } else if (data_.minutes.find(static_cast<Minutes>(date_time.min)) == data_.minutes.end()) {
                 curr += minutes{1};
                 curr -= seconds{date_time.sec};
-            } else if (data_.GetSeconds().find(static_cast<Seconds>(date_time.sec)) == data_.GetSeconds().end()) {
+            } else if (data_.seconds.find(static_cast<Seconds>(date_time.sec)) == data_.seconds.end()) {
                 curr += seconds{1};
             } else {
                 done = true;

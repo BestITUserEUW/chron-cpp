@@ -67,10 +67,10 @@ file(GLOB_RECURSE ORYX_CHRON_HEADERS
 target_sources(${PROJECT_NAME} 
     PRIVATE 
         src/clock.cpp
-        src/data.cpp
         src/randomization.cpp
         src/schedule.cpp
         src/task.cpp
+        src/parser.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/include"

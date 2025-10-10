@@ -12,34 +12,25 @@
 #include <oryx/chron/task.hpp>
 #include <oryx/chron/clock.hpp>
 #include <oryx/chron/chrono_types.hpp>
-#include <oryx/chron/data.hpp>
+#include <oryx/chron/parser.hpp>
 
 namespace oryx::chron {
-namespace details {
-
-class NullMutex {
-public:
-    void lock() {}
-    void unlock() {}
-};
-
-}  // namespace details
 
 template <traits::Clock ClockType = LocalClock,
           traits::BasicLockable MutexType = details::NullMutex,
-          DataCachePolicy CachePolicy = DataCachePolicy::kUseCache>
+          traits::Parser ParserType = ExpressionParser>
 class Scheduler {
 public:
     Scheduler() = default;
 
     // Schedule management
     auto AddSchedule(std::string name, const std::string& schedule, Task::TaskFn work) -> bool {
-        auto data = Data::Create<CachePolicy>(schedule);
-        if (!data.IsValid()) {
+        auto data = parser_(schedule);
+        if (!data) {
             return false;
         }
 
-        Task task(std::move(name), Schedule(std::move(data)), std::move(work));
+        Task task(std::move(name), Schedule(std::move(data.value())), std::move(work));
         if (!task.CalculateNext(clock_.Now())) {
             return false;
         }
@@ -60,10 +51,10 @@ public:
         tasks.reserve(name_schedule_map.size());
 
         for (const auto& [name, schedule] : name_schedule_map) {
-            auto data = Data::Create<CachePolicy>(schedule);
-            is_valid = data.IsValid();
+            auto data = parser_(schedule);
+            is_valid = data.has_value();
             if (is_valid) {
-                Task task(std::move(name), Schedule(std::move(data)), work);
+                Task task(std::move(name), Schedule(std::move(data.value())), work);
                 if (task.CalculateNext(clock_.Now())) {
                     tasks.emplace_back(std::move(task));
                 }
@@ -157,6 +148,7 @@ public:
     }
 
     auto GetClock() -> ClockType& { return clock_; }
+    auto GetParser() -> ParserType& { return parser_; }
     auto GetNumTasks() const -> size_t { return tasks_.size(); }
 
     void GetTimeUntilExpiryForTasks(std::vector<std::tuple<std::string, Duration>>& status) const {
@@ -175,11 +167,18 @@ private:
     std::vector<Task> tasks_{};
     mutable MutexType tasks_mtx_{};
     ClockType clock_{};
+    ParserType parser_{};
     TimePoint last_tick_{};
     bool first_tick_{true};
 };
 
 template <traits::Clock ClockType = LocalClock>
-using MTScheduler = Scheduler<ClockType, std::mutex, DataCachePolicy::kUseCacheThreadSafe>;
+using CScheduler = Scheduler<ClockType, details::NullMutex, CachedExpressionParser<details::NullMutex>>;
+
+template <traits::Clock ClockType = LocalClock>
+using MTScheduler = Scheduler<ClockType, std::mutex>;
+
+template <traits::Clock ClockType = LocalClock>
+using MTCScheduler = Scheduler<ClockType, std::mutex, CachedExpressionParser<std::mutex>>;
 
 }  // namespace oryx::chron

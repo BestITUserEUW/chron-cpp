@@ -1,17 +1,16 @@
-#include <optional>
 #include <oryx/chron/randomization.hpp>
 
+#include <optional>
 #include <algorithm>
-#include <map>
 #include <array>
 #include <iterator>
 #include <format>
 
 #include <oryx/chron/time_types.hpp>
-#include <oryx/chron/data.hpp>
 #include <oryx/chron/details/ctre.hpp>
 #include <oryx/chron/details/string_cast.hpp>
 #include <oryx/chron/details/to_underlying.hpp>
+#include <oryx/chron/details/parser.hpp>
 
 namespace oryx::chron {
 namespace {
@@ -35,9 +34,8 @@ auto GetRandomInRange(std::string_view section,
             right = std::clamp(right, limit.first, limit.second);
         }
 
-        Data cron_data;
         std::set<T> numbers;
-        result.first = cron_data.ConvertFromStringRangeToNumberRange<T>(std::format("{}-{}", left, right), numbers);
+        result.first = details::Parser::ConvertFromStringRangeToNumberRange(std::format("{}-{}", left, right), numbers);
 
         // Remove items outside the limit
         if (limit.first != -1 && limit.second != -1) {
@@ -67,19 +65,19 @@ auto GetRandomInRange(std::string_view section,
 }
 
 auto DayLimiter(const std::set<Months>& months) -> std::pair<int, int> {
-    int max = details::to_underlying(DayOfMonth::Last);
+    int max = details::to_underlying(Days::Last);
 
     for (auto month : months) {
         if (month == Months::February) {
             // Limit to 29 days, possibly causing delaying schedule until next leap year.
             max = std::min(max, 29);
-        } else if (std::ranges::find(Data::kMonthsWith31, month) == std::end(Data::kMonthsWith31)) {
+        } else if (std::ranges::find(details::kMonthsWith31, month) == details::kMonthsWith31.end()) {
             // Not among the months with 31 days
             max = std::min(max, 30);
         }
     }
 
-    return {details::to_underlying(DayOfMonth::First), max};
+    return {details::to_underlying(Days::First), max};
 }
 
 }  // namespace
@@ -122,27 +120,26 @@ auto Randomization::Parse(std::string_view cron_schedule) -> std::optional<std::
         success &= hour.first;
         final_cron_schedule += " " + hour.second;
 
-        // Do Month before DayOfMonth to allow capping the allowed range.
+        // Do Month before Days to allow capping the allowed range.
         auto month = GetRandomInRange<Months>(match.get<5>().to_view(), selected_value, twister_);
         success &= month.first;
 
         std::set<Months> month_range{};
         if (selected_value == -1) {
             // Month is not specific, get the range.
-            Data cr;
-            success &= cr.ConvertFromStringRangeToNumberRange<Months>(match.get<5>().to_string(), month_range);
+            success &= details::Parser::ConvertFromStringRangeToNumberRange(match.get<5>().to_string(), month_range);
         } else {
             month_range.emplace(static_cast<Months>(selected_value));
         }
 
         auto limits = DayLimiter(month_range);
 
-        auto day_of_month = GetRandomInRange<DayOfMonth>(match.get<4>().to_view(), selected_value, twister_, limits);
+        auto day_of_month = GetRandomInRange<Days>(match.get<4>().to_view(), selected_value, twister_, limits);
 
         success &= day_of_month.first;
         final_cron_schedule += " " + day_of_month.second + " " + month.second;
 
-        auto day_of_week = GetRandomInRange<DayOfWeek>(match.get<6>().to_view(), selected_value, twister_);
+        auto day_of_week = GetRandomInRange<Weeks>(match.get<6>().to_view(), selected_value, twister_);
         success &= day_of_week.first;
         final_cron_schedule += " " + day_of_week.second;
     }

@@ -191,6 +191,13 @@ auto main() -> int {
 }
 ```
 
+### Caching
+
+If you you are frequently parsing a lot of similar expressions you can speed up adding schedules by using one of the cached schedulers:
+
+- `CScheduler` (Single Thread)
+- `MTCScheduler` (Multi Thread)
+
 ## Scheduler Clock
 
 The following clocks are available for the scheduler:

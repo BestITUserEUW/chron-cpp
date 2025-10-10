@@ -1,4 +1,5 @@
 #include "doctest.hpp"
+#include "oryx/chron/parser.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -21,10 +22,10 @@ auto DT(year_month_day ymd, hours h = hours{0}, minutes m = minutes{0}, seconds 
 auto Test(const std::string& schedule,
           system_clock::time_point from,
           const std::vector<system_clock::time_point>& expected_next) -> bool {
-    auto c = Data::Create(schedule);
-    bool res = c.IsValid();
+    auto data = kParseExpression(schedule);
+    bool res = data.has_value();
     if (res) {
-        Schedule sched(c);
+        Schedule sched(std::move(data.value()));
 
         auto curr_from = from;
 
@@ -50,10 +51,10 @@ auto Test(const std::string& schedule,
 }
 
 auto Test(const std::string& schedule, system_clock::time_point from, system_clock::time_point expected_next) -> bool {
-    auto c = Data::Create(schedule);
-    bool res = c.IsValid();
+    auto data = kParseExpression(schedule);
+    bool res = data.has_value();
     if (res) {
-        Schedule sched(c);
+        Schedule sched(std::move(data.value()));
         auto result = sched.CalculateFrom(from);
         auto run_time = result.value_or(TimePoint::max());
         res &= result.has_value() && expected_next == run_time;

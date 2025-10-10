@@ -16,9 +16,13 @@ inline constexpr std::array<std::string_view, 12> kMonthNames{"JAN", "FEB", "MAR
 
 inline constexpr std::array<std::string_view, 7> kDayNames{"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
 
+inline constexpr std::array<Months, 7> kMonthsWith31{Months::January, Months::March,   Months::May,     Months::July,
+                                                     Months::August,  Months::October, Months::December};
+
 using NamesView = std::span<const std::string_view>;
 
-template <typename T>
+template <typename Enum>
+    requires std::is_enum_v<Enum>
 auto ReplaceWithNumeric(std::string& data, NamesView names) -> std::string& {
     static auto find_icase = [](std::string_view haystack, std::string_view needle) {
         return std::ranges::search(
@@ -26,7 +30,7 @@ auto ReplaceWithNumeric(std::string& data, NamesView names) -> std::string& {
             [](const int lhs) { return std::toupper(lhs); });
     };
 
-    auto value = to_underlying(T::First);
+    auto value = to_underlying(Enum::First);
 
     std::string cached_str_value;
     for (auto& name : names) {
@@ -59,7 +63,7 @@ auto ReplaceWithNumeric(std::string& data, NamesView names) -> std::string& {
 }
 
 inline auto ReplaceDayNameWithNumeric(std::string& data) -> std::string& {
-    return ReplaceWithNumeric<DayOfWeek>(data, kDayNames);
+    return ReplaceWithNumeric<Weeks>(data, kDayNames);
 }
 
 inline auto ReplaceMonthNameWithNumeric(std::string& data) -> std::string& {
