@@ -8,17 +8,15 @@
 
 namespace oryx::chron {
 
-class TaskInformation {
-public:
-    virtual ~TaskInformation() = default;
-    virtual auto GetDelay() const -> Duration = 0;
-    virtual auto GetName() const -> std::string_view = 0;
+struct TaskInfo {
+    std::string_view name;
+    Duration delay;
 };
 
-class Task : public TaskInformation {
-public:
-    using TaskFn = std::function<void(const TaskInformation &)>;
+using TaskFn = std::function<void(TaskInfo)>;
 
+class Task {
+public:
     Task(std::string name, Schedule schedule, TaskFn task);
 
     auto operator=(const Task &) -> Task & = default;
@@ -30,8 +28,8 @@ public:
     auto TimeUntilExpiry(TimePoint now) const -> Duration;
 
     auto IsExpired(TimePoint now) const -> bool;
-    auto GetName() const -> std::string_view override { return name_; }
-    auto GetDelay() const -> Duration override { return delay_; }
+    auto GetName() const -> std::string_view { return name_; }
+    auto GetDelay() const -> Duration { return delay_; }
     auto GetStatus(TimePoint now) const -> std::string;
 
 private:

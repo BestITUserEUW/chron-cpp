@@ -38,64 +38,64 @@ auto CreateScheduleExpiringIn(system_clock::time_point now, hours h, minutes m, 
 
 }  // namespace
 
-SCENARIO("Adding a task") {
+TEST_CASE("Adding a task") {
     GIVEN("A Scheduler instance with no task") {
-        Scheduler c{};
+        Scheduler sched{};
         bool expired{};
 
-        THEN("Starts with no task") { REQUIRE(c.GetNumTasks() == 0); }
+        THEN("Starts with no task") { REQUIRE(sched.GetNumTasks() == 0); }
 
         WHEN("Adding a task that runs every second") {
-            REQUIRE(c.AddSchedule("A task", "* * * * * ?", [&expired](auto&) { expired = true; }));
+            REQUIRE(sched.AddSchedule("A task", "* * * * * ?", [&expired](auto) { expired = true; }));
 
             THEN("Count is 1 and task was not expired two seconds ago") {
-                REQUIRE(c.GetNumTasks() == 1);
-                c.Tick(c.GetClock().Now() - 2s);
+                REQUIRE(sched.GetNumTasks() == 1);
+                sched.Tick(sched.GetClock().Now() - 2s);
                 REQUIRE_FALSE(expired);
             }
             AND_THEN("Task is expired when calculating based on current time") {
-                c.Tick();
+                sched.Tick();
                 THEN("Task is expired") { REQUIRE(expired); }
             }
         }
     }
 }
 
-SCENARIO("Adding a task that expires in the future") {
+TEST_CASE("Adding a task that expires in the future") {
     GIVEN("A Scheduler instance with task expiring in 3 seconds") {
-        Scheduler<TestClock> c{};
-        auto& clock = c.GetClock();
+        Scheduler<TestClock> sched{};
+        auto& clock = sched.GetClock();
         bool expired{};
 
-        REQUIRE(c.AddSchedule("A task", CreateScheduleExpiringIn(clock.Now(), 0h, 0min, 3s),
-                              [&expired](auto&) { expired = true; }));
+        REQUIRE(sched.AddSchedule("A task", CreateScheduleExpiringIn(clock.Now(), 0h, 0min, 3s),
+                                  [&expired](auto) { expired = true; }));
 
         THEN("Not yet expired") { REQUIRE_FALSE(expired); }
         AND_WHEN("When waiting one second") {
             clock.Advance(1s);
-            c.Tick();
+            sched.Tick();
             THEN("Task has not yet expired") { REQUIRE_FALSE(expired); }
         }
         AND_WHEN("When waiting three seconds") {
             clock.Advance(3s);
-            c.Tick();
+            sched.Tick();
             THEN("Task has expired") { REQUIRE(expired); }
         }
     }
 }
 
-SCENARIO("Get delay using Task-Information") {
+TEST_CASE("Get delay using Task-Information") {
     using namespace std::chrono_literals;
 
     GIVEN("A Scheduler instance with one task expiring in  2 seconds, but taking 3 seconds to execute") {
         auto two_second_expired = 0;
         auto delay = system_clock::duration(-1s);
 
-        Scheduler c;
+        Scheduler sched;
 
-        REQUIRE(c.AddSchedule("Two", "*/2 * * * * ?", [&two_second_expired, &delay](auto& i) {
+        REQUIRE(sched.AddSchedule("Two", "*/2 * * * * ?", [&two_second_expired, &delay](auto info) {
             two_second_expired++;
-            delay = i.GetDelay();
+            delay = info.delay;
             std::this_thread::sleep_for(3s);
         }));
         THEN("Not yet expired") {
@@ -103,7 +103,7 @@ SCENARIO("Get delay using Task-Information") {
             REQUIRE(delay <= 0s);
         }
         WHEN("Exactly schedule task") {
-            while (two_second_expired == 0) c.Tick();
+            while (two_second_expired == 0) sched.Tick();
 
             THEN("Task should have expired within a valid time") {
                 REQUIRE(two_second_expired == 1);
@@ -112,7 +112,7 @@ SCENARIO("Get delay using Task-Information") {
             AND_THEN(
                 "Executing another Tick again, leading to execute task again immediatly, but not on time as execution "
                 "has taken 3 seconds.") {
-                c.Tick();
+                sched.Tick();
                 REQUIRE(two_second_expired == 2);
                 REQUIRE(delay >= 1s);
             }
@@ -125,13 +125,13 @@ TEST_CASE("Task priority") {
         int three_sec_expired{};
         int five_sec_expired{};
 
-        Scheduler<TestClock> c;
-        auto& clock = c.GetClock();
-        REQUIRE(c.AddSchedule("Five", CreateScheduleExpiringIn(c.GetClock().Now(), 0h, 0min, 5s),
-                              [&five_sec_expired](auto&) { five_sec_expired++; }));
+        Scheduler<TestClock> sched;
+        auto& clock = sched.GetClock();
+        REQUIRE(sched.AddSchedule("Five", CreateScheduleExpiringIn(sched.GetClock().Now(), 0h, 0min, 5s),
+                                  [&five_sec_expired](auto) { five_sec_expired++; }));
 
-        REQUIRE(c.AddSchedule("Three", CreateScheduleExpiringIn(c.GetClock().Now(), 0h, 0min, 3s),
-                              [&three_sec_expired](auto&) { three_sec_expired++; }));
+        REQUIRE(sched.AddSchedule("Three", CreateScheduleExpiringIn(sched.GetClock().Now(), 0h, 0min, 3s),
+                                  [&three_sec_expired](auto) { three_sec_expired++; }));
 
         THEN("Not yet expired") {
             REQUIRE_FALSE(three_sec_expired);
@@ -140,7 +140,7 @@ TEST_CASE("Task priority") {
 
         WHEN("Waiting 1 seconds") {
             clock.Advance(1s);
-            c.Tick();
+            sched.Tick();
 
             THEN("Task has not yet expired") {
                 REQUIRE(three_sec_expired == 0);
@@ -149,7 +149,7 @@ TEST_CASE("Task priority") {
         }
         AND_WHEN("Waiting 3 seconds") {
             clock.Advance(3s);
-            c.Tick();
+            sched.Tick();
 
             THEN("3 second task has expired") {
                 REQUIRE(three_sec_expired == 1);
@@ -158,7 +158,7 @@ TEST_CASE("Task priority") {
         }
         AND_WHEN("Waiting 5 seconds") {
             clock.Advance(5s);
-            c.Tick();
+            sched.Tick();
 
             THEN("3 and 5 second task has expired") {
                 REQUIRE(three_sec_expired == 1);
@@ -166,8 +166,8 @@ TEST_CASE("Task priority") {
             }
         }
         AND_WHEN("Waiting based on the time given by the Scheduler instance") {
-            clock.Advance(c.TimeUntilNext());
-            c.Tick();
+            clock.Advance(sched.TimeUntilNext());
+            sched.Tick();
 
             THEN("3 second task has expired") {
                 REQUIRE(three_sec_expired == 1);
@@ -175,11 +175,11 @@ TEST_CASE("Task priority") {
             }
         }
         AND_WHEN("Waiting based on the time given by the Scheduler instance") {
-            clock.Advance(c.TimeUntilNext());
-            REQUIRE(c.Tick() == 1);
+            clock.Advance(sched.TimeUntilNext());
+            REQUIRE(sched.Tick() == 1);
 
-            clock.Advance(c.TimeUntilNext());
-            REQUIRE(c.Tick() == 1);
+            clock.Advance(sched.TimeUntilNext());
+            REQUIRE(sched.Tick() == 1);
 
             THEN("3 and 5 second task has each expired once") {
                 REQUIRE(three_sec_expired == 1);
@@ -189,74 +189,74 @@ TEST_CASE("Task priority") {
     }
 }
 
-SCENARIO("Clock changes") {
+TEST_CASE("Clock changes") {
     GIVEN("A Scheduler instance with a single task expiring every hour") {
-        Scheduler<TestClock> c{};
-        auto& clock = c.GetClock();
+        Scheduler<TestClock> sched{};
+        auto& clock = sched.GetClock();
 
         // Midnight
         clock.SetTime(sys_days{2018y / 05 / 05});
 
         // Every hour
-        REQUIRE(c.AddSchedule("Clock change task", "0 0 * * * ?", [](auto&) {}));
+        REQUIRE(sched.AddSchedule("Clock change task", "0 0 * * * ?", [](auto) {}));
 
         // https://linux.die.net/man/8/scheduler
 
         WHEN("Clock changes <3h forward") {
             THEN("Task expires accordingly") {
-                REQUIRE(c.Tick() == 1);
+                REQUIRE(sched.Tick() == 1);
                 clock.Advance(minutes{30});  // 00:30
-                REQUIRE(c.Tick() == 0);
+                REQUIRE(sched.Tick() == 0);
                 clock.Advance(minutes{30});  // 01:00
-                REQUIRE(c.Tick() == 1);
-                REQUIRE(c.Tick() == 0);
-                REQUIRE(c.Tick() == 0);
+                REQUIRE(sched.Tick() == 1);
+                REQUIRE(sched.Tick() == 0);
+                REQUIRE(sched.Tick() == 0);
                 clock.Advance(minutes{30});  // 01:30
-                REQUIRE(c.Tick() == 0);
+                REQUIRE(sched.Tick() == 0);
                 clock.Advance(minutes{15});  // 01:45
-                REQUIRE(c.Tick() == 0);
+                REQUIRE(sched.Tick() == 0);
                 clock.Advance(minutes{15});  // 02:00
-                REQUIRE(c.Tick() == 1);
+                REQUIRE(sched.Tick() == 1);
             }
         }
         AND_WHEN("Clock is moved forward >= 3h") {
             THEN("Task are rescheduled, not run") {
-                REQUIRE(c.Tick() == 1);
+                REQUIRE(sched.Tick() == 1);
                 clock.Advance(hours{3});     // 03:00
-                REQUIRE(c.Tick() == 1);      // Rescheduled
+                REQUIRE(sched.Tick() == 1);  // Rescheduled
                 clock.Advance(minutes{15});  // 03:15
-                REQUIRE(c.Tick() == 0);
+                REQUIRE(sched.Tick() == 0);
                 clock.Advance(minutes{45});  // 04:00
-                REQUIRE(c.Tick() == 1);
+                REQUIRE(sched.Tick() == 1);
             }
         }
         AND_WHEN("Clock is moved back <3h") {
             THEN("Tasks retain their last scheduled time and are prevented from running twice") {
-                REQUIRE(c.Tick() == 1);
+                REQUIRE(sched.Tick() == 1);
                 clock.Advance(-hours{1});  // 23:00
-                REQUIRE(c.Tick() == 0);
+                REQUIRE(sched.Tick() == 0);
                 clock.Advance(-hours{1});  // 22:00
-                REQUIRE(c.Tick() == 0);
+                REQUIRE(sched.Tick() == 0);
                 clock.Advance(hours{3});  // 1:00
-                REQUIRE(c.Tick() == 1);
+                REQUIRE(sched.Tick() == 1);
             }
         }
         AND_WHEN("Clock is moved back >3h") {
             THEN("Tasks are rescheduled") {
-                REQUIRE(c.Tick() == 1);
+                REQUIRE(sched.Tick() == 1);
                 clock.Advance(-hours{3});  // 21:00
-                REQUIRE(c.Tick() == 1);
-                REQUIRE(c.Tick() == 0);
+                REQUIRE(sched.Tick() == 1);
+                REQUIRE(sched.Tick() == 0);
                 clock.Advance(hours{1});  // 22:00
-                REQUIRE(c.Tick() == 1);
+                REQUIRE(sched.Tick() == 1);
             }
         }
     }
 }
 
-SCENARIO("Multiple Ticks per second") {
-    Scheduler<TestClock> c{};
-    auto& clock = c.GetClock();
+TEST_CASE("Multiple Ticks per second") {
+    Scheduler<TestClock> sched{};
+    auto& clock = sched.GetClock();
 
     auto now = sys_days{2018y / 05 / 05};
     clock.SetTime(now);
@@ -264,71 +264,94 @@ SCENARIO("Multiple Ticks per second") {
     int run_count{};
 
     // Every 10 seconds
-    REQUIRE(c.AddSchedule("Clock change task", "*/10 0 * * * ?", [&run_count](auto&) { run_count++; }));
+    REQUIRE(sched.AddSchedule("Clock change task", "*/10 0 * * * ?", [&run_count](auto) { run_count++; }));
 
-    c.Tick(now);
+    sched.Tick(now);
 
     REQUIRE(run_count == 1);
 
     WHEN("Many Ticks during one seconds") {
         for (auto i = 0; i < 10; ++i) {
             clock.Advance(microseconds{1});
-            c.Tick();
+            sched.Tick();
         }
 
         THEN("Run Count has not increased") { REQUIRE(run_count == 1); }
     }
 }
 
-SCENARIO("Tasks can be added and removed from the scheduler") {
+TEST_CASE("Tasks can be added and removed from the scheduler") {
     GIVEN("A Scheduler instance with no task") {
-        Scheduler c{};
+        Scheduler sched{};
         bool expired{};
 
         WHEN("Adding 5 tasks that runs every second") {
-            REQUIRE(c.AddSchedule("Task-1", "* * * * * ?", [&expired](auto&) { expired = true; }));
+            REQUIRE(sched.AddSchedule("Task-1", "* * * * * ?", [&expired](auto) { expired = true; }));
 
-            REQUIRE(c.AddSchedule("Task-2", "* * * * * ?", [&expired](auto&) { expired = true; }));
+            REQUIRE(sched.AddSchedule("Task-2", "* * * * * ?", [&expired](auto) { expired = true; }));
 
-            REQUIRE(c.AddSchedule("Task-3", "* * * * * ?", [&expired](auto&) { expired = true; }));
+            REQUIRE(sched.AddSchedule("Task-3", "* * * * * ?", [&expired](auto) { expired = true; }));
 
-            REQUIRE(c.AddSchedule("Task-4", "* * * * * ?", [&expired](auto&) { expired = true; }));
+            REQUIRE(sched.AddSchedule("Task-4", "* * * * * ?", [&expired](auto) { expired = true; }));
 
-            REQUIRE(c.AddSchedule("Task-5", "* * * * * ?", [&expired](auto&) { expired = true; }));
+            REQUIRE(sched.AddSchedule("Task-5", "* * * * * ?", [&expired](auto) { expired = true; }));
 
-            THEN("Count is 5") { REQUIRE(c.GetNumTasks() == 5); }
+            THEN("Count is 5") { REQUIRE(sched.GetNumTasks() == 5); }
             AND_THEN("Removing all scheduled tasks") {
-                c.ClearSchedules();
-                REQUIRE(c.GetNumTasks() == 0);
+                sched.ClearSchedules();
+                REQUIRE(sched.GetNumTasks() == 0);
             }
             AND_THEN("Removing a task that does not exist") {
-                c.RemoveSchedule("Task-6");
-                REQUIRE(c.GetNumTasks() == 5);
+                sched.RemoveSchedule("Task-6");
+                REQUIRE(sched.GetNumTasks() == 5);
             }
             AND_THEN("Removing a task that does exist") {
-                c.RemoveSchedule("Task-5");
-                REQUIRE(c.GetNumTasks() == 4);
+                sched.RemoveSchedule("Task-5");
+                REQUIRE(sched.GetNumTasks() == 4);
             }
         }
     }
 }
 
-SCENARIO("TzClock Timezone is not set fallback to utc") {
-    GIVEN("No timezone") {
-        TzClock tz_clock{};
-        auto now = system_clock::now();
-        REQUIRE(tz_clock.UtcOffset(now) == 0s);
-    }
-    GIVEN("A wrong timezone") {
-        TzClock tz_clock{};
-        auto now = system_clock::now();
-        tz_clock.TrySetTimezone("404Not/Found");
-        REQUIRE(tz_clock.UtcOffset(now) == 0s);
-    }
-}
+TEST_CASE("Adding a batch of tasks") {
+    static constexpr int kNumTasks = 20;
 
-SCENARIO("TzClock Setting time zone") {
-    TzClock tz_clock{};
-    GIVEN("Valid time zone") { REQUIRE(tz_clock.TrySetTimezone("Europe/Berlin")); }
-    GIVEN("Invalid time zone") { REQUIRE_FALSE(tz_clock.TrySetTimezone("404Not/Found")); }
+    GIVEN("Many correct schedules") {
+        Scheduler<TestClock> scheduler;
+        int counter{0};
+
+        bool success = scheduler.AddScheduleBatch(
+            [&](auto&& add_schedule) {
+                for (auto i = 0; i < kNumTasks; i++) {
+                    REQUIRE(add_schedule(std::to_string(i), "* * * * * ?", [&counter](auto) { counter++; }));
+                }
+            },
+            kNumTasks);
+        REQUIRE(success);
+
+        scheduler.GetClock().Advance(1s);
+        REQUIRE_EQ(scheduler.Tick(), kNumTasks);
+        REQUIRE_EQ(counter, kNumTasks);
+    }
+
+    GIVEN("Two valid one invalid schedule") {
+        Scheduler<TestClock> scheduler;
+        int counter{0};
+
+        bool success = scheduler.AddScheduleBatch(
+            [&](auto add_schedule) {
+                REQUIRE(add_schedule("one", "* * * * * ?", [&counter](auto) { counter++; }));
+                REQUIRE(add_schedule("two", "* * * * * ?", [&counter](auto) { counter++; }));
+                REQUIRE_FALSE(add_schedule("failing", "+ * * * * ?", [&counter](auto) {
+                    REQUIRE(false);
+                    counter++;
+                }));
+            },
+            2);
+        REQUIRE(success);
+
+        scheduler.GetClock().Advance(1s);
+        REQUIRE_EQ(scheduler.Tick(), 2);
+        REQUIRE_EQ(counter, 2);
+    }
 }

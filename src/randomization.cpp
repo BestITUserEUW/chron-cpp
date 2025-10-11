@@ -65,7 +65,7 @@ auto GetRandomInRange(std::string_view section,
 }
 
 auto DayLimiter(const std::set<Months>& months) -> std::pair<int, int> {
-    int max = details::to_underlying(Days::Last);
+    int max = details::to_underlying(MonthDays::Last);
 
     for (auto month : months) {
         if (month == Months::February) {
@@ -77,7 +77,7 @@ auto DayLimiter(const std::set<Months>& months) -> std::pair<int, int> {
         }
     }
 
-    return {details::to_underlying(Days::First), max};
+    return {details::to_underlying(MonthDays::First), max};
 }
 
 }  // namespace
@@ -120,7 +120,7 @@ auto Randomization::Parse(std::string_view cron_schedule) -> std::optional<std::
         success &= hour.first;
         final_cron_schedule += " " + hour.second;
 
-        // Do Month before Days to allow capping the allowed range.
+        // Do Month before MonthDays to allow capping the allowed range.
         auto month = GetRandomInRange<Months>(match.get<5>().to_view(), selected_value, twister_);
         success &= month.first;
 
@@ -134,12 +134,12 @@ auto Randomization::Parse(std::string_view cron_schedule) -> std::optional<std::
 
         auto limits = DayLimiter(month_range);
 
-        auto day_of_month = GetRandomInRange<Days>(match.get<4>().to_view(), selected_value, twister_, limits);
+        auto day_of_month = GetRandomInRange<MonthDays>(match.get<4>().to_view(), selected_value, twister_, limits);
 
         success &= day_of_month.first;
         final_cron_schedule += " " + day_of_month.second + " " + month.second;
 
-        auto day_of_week = GetRandomInRange<Weeks>(match.get<6>().to_view(), selected_value, twister_);
+        auto day_of_week = GetRandomInRange<Weekdays>(match.get<6>().to_view(), selected_value, twister_);
         success &= day_of_week.first;
         final_cron_schedule += " " + day_of_week.second;
     }

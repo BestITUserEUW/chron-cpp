@@ -2,6 +2,8 @@
 
 #include <set>
 #include <algorithm>
+#include <ranges>
+#include <type_traits>
 
 #include <oryx/chron/traits.hpp>
 #include <oryx/chron/chron_data.hpp>
@@ -149,28 +151,26 @@ struct Parser {
     }
 
     template <chron::traits::TimeType T>
+    static auto ProcessParts(auto&& parts, std::set<T>& numbers) -> bool {
+        return std::ranges::all_of(parts, [&numbers](auto&& part) {
+            if constexpr (std::is_convertible_v<decltype(part), std::string_view>)
+                return ConvertFromStringRangeToNumberRange<T>(part, numbers);
+            else
+                return ConvertFromStringRangeToNumberRange(std::string_view(part.begin(), part.size()), numbers);
+        });
+    }
+
+    template <chron::traits::TimeType T>
     static auto ValidateNumeric(std::string_view s, std::set<T>& numbers) -> bool {
-        auto parts = details::StringSplit(s, ',');
-        return ProcessParts(parts, numbers);
+        return ProcessParts(std::views::split(s, ','), numbers);
     }
 
     template <chron::traits::TimeType T>
     static auto ValidateLiteral(const std::string& s, std::set<T>& numbers, std::span<const std::string_view> names)
         -> bool {
         auto parts = details::StringSplit(s, ',');
-        for (auto& part : parts) {
-            details::ReplaceWithNumeric<T>(part, names);
-        }
+        std::ranges::for_each(parts, [&names](auto&& part) { details::ReplaceWithNumeric<T>(part, names); });
         return ProcessParts(parts, numbers);
-    }
-
-    template <chron::traits::TimeType T>
-    static auto ProcessParts(std::span<const std::string> parts, std::set<T>& numbers) -> bool {
-        bool success{true};
-        for (auto& part : parts) {
-            success &= ConvertFromStringRangeToNumberRange(part, numbers);
-        }
-        return success;
     }
 
     static auto CheckDomVsDow(std::string_view dom, std::string_view dow) -> bool {
@@ -187,13 +187,13 @@ struct Parser {
 
     static auto ValidateDateVsMonths(const ChronData& data) -> bool {
         // Only February allowed? Ensure day_of_month includes only 1..29
-        if (data.months.size() == 1 && data.months.count(static_cast<Months>(2))) {
+        if (data.months.size() == 1 && data.months.contains(static_cast<Months>(2))) {
             if (!details::AnyOf(data.days, 1, 29)) return false;
         }
 
         // If only day 31 is selected, ensure at least one month allows it
-        if (data.days.size() == 1 && data.days.count(Days::Last)) {
-            if (!std::ranges::any_of(details::kMonthsWith31, [&data](Months m) { return data.months.count(m) > 0; })) {
+        if (data.days.size() == 1 && data.days.contains(MonthDays::Last)) {
+            if (!std::ranges::any_of(details::kMonthsWith31, [&data](Months m) { return data.months.contains(m); })) {
                 return false;
             }
         }

@@ -21,16 +21,16 @@ void Task::Execute(TimePoint now) {
     delay_ = now - next_schedule_;
 
     last_run_ = now;
-    task_(*this);
+    task_(TaskInfo(name_, delay_));
 }
 
 auto Task::CalculateNext(TimePoint from) -> bool {
-    auto result = schedule_.CalculateFrom(from);
+    auto time_point = schedule_.CalculateFrom(from);
 
     // In case the calculation fails, the task will no longer expire.
-    valid_ = result.has_value();
+    valid_ = time_point.has_value();
     if (valid_) {
-        next_schedule_ = result.value();
+        next_schedule_ = time_point.value();
 
         // Make sure that the task is allowed to run.
         last_run_ = next_schedule_ - 1s;
@@ -40,16 +40,11 @@ auto Task::CalculateNext(TimePoint from) -> bool {
 }
 
 auto Task::TimeUntilExpiry(TimePoint now) const -> Duration {
-    Duration d{};
-
     // Explicitly return 0s instead of a possibly negative duration when it has expired.
     if (now >= next_schedule_) {
-        d = 0s;
-    } else {
-        d = next_schedule_ - now;
+        return 0s;
     }
-
-    return d;
+    return next_schedule_ - now;
 }
 
 auto Task::IsExpired(TimePoint now) const -> bool { return valid_ && now >= last_run_ && TimeUntilExpiry(now) == 0s; }

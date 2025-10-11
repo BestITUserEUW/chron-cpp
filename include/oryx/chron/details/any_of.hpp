@@ -14,19 +14,16 @@ concept StaticCastableFromUInt8 = requires(uint8_t v) {
 };
 }  // namespace traits
 
-template <traits::StaticCastableFromUInt8 T>
-auto AnyOf(const std::set<T>& set, uint8_t low, uint8_t high) -> bool {
-    for (auto i = low; i <= high; ++i)
-        if (set.contains(static_cast<T>(i))) return true;
-    return false;
-}
-
 template <typename Enum>
     requires std::is_enum_v<Enum>
-auto AnyOf(const std::set<Enum>& set, Enum low, Enum high) -> bool {
-    for (auto i = details::to_underlying(low); i <= details::to_underlying(high); ++i)
-        if (set.contains(static_cast<Enum>(i))) return true;
-    return false;
+auto AnyOf(const std::set<Enum>& range, Enum low, Enum high) -> bool {
+    auto it = range.lower_bound(low);
+    return it != range.end() && *it <= high;
+}
+
+template <traits::StaticCastableFromUInt8 T>
+auto AnyOf(const std::set<T>& range, uint8_t low, uint8_t high) -> bool {
+    return AnyOf(range, static_cast<T>(low), static_cast<T>(high));
 }
 
 }  // namespace oryx::chron::details

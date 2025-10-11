@@ -33,10 +33,10 @@ auto ExpressionParser::operator()(std::string_view cron_expression) const -> std
         valid = details::Parser::ValidateNumeric<Seconds>(match.get<1>().to_view(), data.seconds);
         valid &= details::Parser::ValidateNumeric<Minutes>(match.get<2>().to_view(), data.minutes);
         valid &= details::Parser::ValidateNumeric<Hours>(match.get<3>().to_view(), data.hours);
-        valid &= details::Parser::ValidateNumeric<Days>(match.get<4>().to_view(), data.days);
+        valid &= details::Parser::ValidateNumeric<MonthDays>(match.get<4>().to_view(), data.days);
         valid &=
             details::Parser::ValidateLiteral<Months>(match.get<5>().to_string(), data.months, details::kMonthNames);
-        valid &= details::Parser::ValidateLiteral<Weeks>(match.get<6>().to_string(), data.weeks, details::kDayNames);
+        valid &= details::Parser::ValidateLiteral<Weekdays>(match.get<6>().to_string(), data.weeks, details::kDayNames);
         valid &= details::Parser::CheckDomVsDow(match.get<4>().to_view(), match.get<6>().to_view());
         valid &= details::Parser::ValidateDateVsMonths(data);
     }

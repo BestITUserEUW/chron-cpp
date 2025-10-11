@@ -8,8 +8,10 @@ This library is completely based on [libcron](https://github.com/PerMalmberg/lib
 
 - Proper CMake support
 - date lib replaced with std::chrono implementation
-- Time zone clock
+- Time zone clock `TzClock`
 - Automated tests for (clang, gcc, msvc)
+- Correct Thread Safety Guarantees
+- Optional Cron Expression Caching
 
 ## Third party libraries
 
@@ -30,7 +32,7 @@ using namespace std::chrono_literals;
 auto main() -> int {
     oryx::chron::Scheduler scheduler;
 
-    scheduler.AddSchedule("Task-1", "* * * * * ?", [](auto&) { std::cout << "Hello World\n"; });
+    scheduler.AddSchedule("Task-1", "* * * * * ?", [](auto info) { std::cout << info.name << " called with delay" << task.delay << "\n"; });
     for (;;) {
         scheduler.Tick();
         std::this_thread::sleep_for(1s);
@@ -40,11 +42,7 @@ auto main() -> int {
 }
 ```
 
-In order to trigger execution of callbacks one must call `oryx::chron::Scheduler::Tick` at least once a second to prevent missing schedules.
-
-In case there is a lot of time between you call `AddSchedule` and `Tick`, you can call `RecalculateSchedule`.
-
-`oryx::chron::Taskinformation` offers a convenient API to retrieve further information:
+In order to trigger execution of callbacks one must call `oryx::chron::Scheduler::Tick` at least once a second to prevent missing schedules:
 
 ```cpp
 #include <thread>
@@ -58,9 +56,9 @@ using namespace std::chrono_literals;
 auto main() -> int {
     oryx::chron::Scheduler scheduler;
 
-    scheduler.AddSchedule("Task-1", "* * * * * ?", [](const oryx::chron::TaskInformation& task_info) {
-        if (task_info.GetDelay() >= 1s) {
-            std::cout << task_info.GetName() << ": my scheduler is ticking to slow\n";
+    scheduler.AddSchedule("Task-1", "* * * * * ?", [](const oryx::chron::TaskInfo& info) {
+        if (info.delay >= 1s) {
+            std::cout << info.name << ": my scheduler is ticking to slow\n";
         }
     });
     for (;;) {
@@ -72,64 +70,9 @@ auto main() -> int {
 }
 ```
 
-### Adding multiple tasks with individual schedules at once
+### Adding a batch of schedules at once
 
-Add schedule needs to sort the underlying container each time you add a schedule. To improve performance when adding a batch of tasks by only sorting once you can also call AddSchedule with:
-
-- `std::map<std::string, std::string>`
-- `std::vector<std::pair<std::string, std::string>>`
-- `std::vector<std::tuple<std::string, std::string>>`
-- `std::unordered_map<std::string, std::string>`
-
-where the first element corresponds to the task name and the second element to the task schedule. Only if all schedules in the container are valid, they will be added to `oryx::chron::Scheduler`. The return type is a `std::tuple<bool, std::string, std::string>`, where the boolean is `true` if the schedules have been added or false otherwise. If the schedules have not been added, the second element in the tuple corresponds to the task-name with the given invalid schedule. If there are multiple invalid schedules in the container, `AddSchedule` will abort at the first invalid element
-
-```cpp
-#include <chrono>
-#include <thread>
-#include <iostream>
-#include <unordered_map>
-
-#include <oryx/chron.hpp>
-
-using namespace std::chrono_literals;
-
-auto main() -> int {
-    oryx::chron::Scheduler scheduler;
-
-    std::unordered_map<std::string, std::string> schedules;
-    for (int i = 1; i <= 50; i++) {
-        schedules["Task-" + std::to_string(i)] = "* * * * * ?";
-    }
-
-    auto res = scheduler.AddSchedule(schedules, [](const oryx::chron::TaskInformation& task_info) {
-        std::cout << task_info.GetName() << ": "
-                  << std::chrono::duration_cast<std::chrono::milliseconds>(task_info.GetDelay()) << "\n";
-    });
-
-    for (;;) {
-        scheduler.Tick();
-        std::this_thread::sleep_for(1s);
-    }
-
-    return 0;
-}
-```
-
-Adding multiple with an invalid schedule:
-
-```cpp
-std::unordered_map<std::string, std::string> schedules;
-for (int i = 1; i <= 50; i++) {
-    schedules["Task-" + std::to_string(i)] = "* * * * * ?";
-}
-schedules["Task-50"] = "invalid";
-
-auto res = scheduler.AddSchedule(
-    schedules, [](const oryx::chron::TaskInformation& task_info) { std::cout << task_info.GetName(); });
-if (std::get<0>(res) == false) {
-    std::cout << "Task " << std::get<1>(res) << "has an invalid schedule: " << std::get<2>(res) << "\n";
-}
-```
+#### TODO
 
 
 
@@ -180,7 +123,7 @@ auto main() -> int {
     while (!stop_requested) {
         task_name = "Task-" + std::to_string(counter++);
         scheduler.AddSchedule(task_name, "* * * * * ?",
-                              [](auto& info) { std::cout << info.GetName() << ": Called\n"; });
+                              [](TaskInfo info) { std::cout << info.name << ": Called\n"; });
         std::cout << "Scheduled: " << task_name << "\n";
         std::this_thread::sleep_for(1s);
     }
@@ -233,7 +176,7 @@ auto main() -> int {
 
 This implementation supports cron format, as specified below. 
 
-Each schedule expression conststs of 6 parts, all mandatory. However, if 'day of month' specifies specific days, then 'day of week' is ignored.
+Each schedule expression consists of 6 parts, all mandatory. However, if 'day of month' specifies specific days, then 'day of week' is ignored.
 
 ```text
 ┌──────────────seconds (0 - 59)
@@ -302,7 +245,7 @@ These special time specification tokens which replace the 5 initial time and dat
 |Token|Meaning
 | --- | --- |
 | @yearly | Run once a year, ie.  "0 0 0 1 1 *".
-| @annually | Run once a year, ie.  "0 0 0 1 1 *"".
+| @annually | Run once a year, ie.  "0 0 0 1 1 *".
 | @monthly | Run once a month, ie. "0 0 0 1 * *".
 | @weekly | Run once a week, ie.  "0 0 0 * * 0".
 | @daily | Run once a day, ie.   "0 0 0 * * ?".

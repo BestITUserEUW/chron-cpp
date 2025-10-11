@@ -16,34 +16,39 @@ struct ExpressionParser {
 };
 
 template <traits::BasicLockable MutexType = details::NullMutex>
-class CachedExpressionParser {
+class CachedExpressionParser : ExpressionParser {
 public:
-    using Pair = std::pair<std::string, ChronData>;
+    using Pair = std::pair<std::size_t, ChronData>;
 
     auto operator()(std::string_view cron_expression) const -> std::optional<ChronData> {
         std::lock_guard lock{mtx_};
-        auto it = std::ranges::find(cache_, cron_expression, &Pair::first);
+        auto it = std::ranges::find(cache_, hash_(cron_expression), &Pair::first);
         if (it != cache_.end()) {
             return it->second;
         }
 
-        auto data = parser_(cron_expression);
-        if (data) cache_.emplace_back(std::string(cron_expression), data.value());
+        auto data = ExpressionParser::operator()(cron_expression);
+        if (data) cache_.emplace_back(hash_(cron_expression), data.value());
         return data;
     }
 
-    void ClearCache() {
+    void Clear() {
         std::lock_guard lock{mtx_};
         cache_.clear();
     }
 
-    auto GetCacheSize() const -> size_t {
+    auto Contains(std::string_view cron_expression) const -> bool {
+        std::lock_guard lock{mtx_};
+        return std::ranges::find(cache_, hash_(cron_expression), &Pair::first) != cache_.end();
+    }
+
+    auto GetSize() const -> size_t {
         std::lock_guard lock{mtx_};
         return cache_.size();
     }
 
 private:
-    ExpressionParser parser_{};
+    std::hash<std::string_view> hash_{};
     mutable MutexType mtx_{};
     mutable std::vector<Pair> cache_{};
 };

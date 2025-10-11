@@ -12,8 +12,8 @@ struct ChronData {
     std::set<Seconds> seconds;
     std::set<Minutes> minutes;
     std::set<Hours> hours;
-    std::set<Days> days;
-    std::set<Weeks> weeks;
+    std::set<MonthDays> days;
+    std::set<Weekdays> weeks;
     std::set<Months> months;
 };
 

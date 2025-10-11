@@ -3,9 +3,9 @@
 #include <algorithm>
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <chrono>
-#include <map>
 #include <vector>
 
 #include <oryx/chron/traits.hpp>
@@ -23,57 +23,39 @@ class Scheduler {
 public:
     Scheduler() = default;
 
-    // Schedule management
-    auto AddSchedule(std::string name, const std::string& schedule, Task::TaskFn work) -> bool {
-        auto data = parser_(schedule);
-        if (!data) {
-            return false;
-        }
-
-        Task task(std::move(name), Schedule(std::move(data.value())), std::move(work));
-        if (!task.CalculateNext(clock_.Now())) {
+    auto AddSchedule(std::string name, std::string_view cron_expr, TaskFn work) -> bool {
+        auto task = MakeTask(std::move(name), cron_expr, std::move(work));
+        if (!task) {
             return false;
         }
 
         std::lock_guard lock{tasks_mtx_};
-        tasks_.emplace_back(std::move(task));
+        tasks_.emplace_back(std::move(task.value()));
         UnsafeSortTasks();
         return true;
     }
 
-    template <typename Schedules = std::map<std::string, std::string>>
-    auto AddSchedule(const Schedules& name_schedule_map, Task::TaskFn work)
-        -> std::tuple<bool, std::string, std::string> {
-        bool is_valid{true};
-        std::tuple<bool, std::string, std::string> result{false, "", ""};
-
+    template <typename F>
+    auto AddScheduleBatch(F&& fn, std::optional<size_t> num_tasks = std::nullopt) -> bool {
         std::vector<Task> tasks;
-        tasks.reserve(name_schedule_map.size());
+        if (num_tasks) tasks.reserve(num_tasks.value());
+        auto add_schedule = [this, &tasks](std::string name, std::string_view cron_expr, TaskFn work) -> bool {
+            auto task = MakeTask(std::move(name), cron_expr, work);
+            if (!task) return false;
+            tasks.emplace_back(std::move(task.value()));
+            return true;
+        };
 
-        for (const auto& [name, schedule] : name_schedule_map) {
-            auto data = parser_(schedule);
-            is_valid = data.has_value();
-            if (is_valid) {
-                Task task(std::move(name), Schedule(std::move(data.value())), work);
-                if (task.CalculateNext(clock_.Now())) {
-                    tasks.emplace_back(std::move(task));
-                }
-            } else {
-                std::get<1>(result) = name;
-                std::get<2>(result) = schedule;
-            }
-            if (!is_valid) break;
+        std::invoke(fn, std::move(add_schedule));
+        if (tasks.empty()) {
+            return false;
         }
 
-        if (is_valid && !tasks.empty()) {
-            std::lock_guard lock{tasks_mtx_};
-            tasks_.reserve(tasks_.size() + tasks.size());
-            tasks_.insert(tasks_.end(), std::make_move_iterator(tasks.begin()), std::make_move_iterator(tasks.end()));
-            UnsafeSortTasks();
-        }
-
-        std::get<0>(result) = is_valid;
-        return result;
+        std::lock_guard lock{tasks_mtx_};
+        tasks_.reserve(tasks_.size() + tasks.size());
+        tasks_.insert(tasks_.end(), std::make_move_iterator(tasks.begin()), std::make_move_iterator(tasks.end()));
+        UnsafeSortTasks();
+        return true;
     }
 
     void ClearSchedules() {
@@ -89,7 +71,7 @@ public:
         }
     }
 
-    void RecalculateSchedule() {
+    void RecalculateSchedules() {
         std::lock_guard lock{tasks_mtx_};
         for (auto& task : tasks_) task.CalculateNext(clock_.Now() + std::chrono::seconds(1));
     }
@@ -151,17 +133,32 @@ public:
     auto GetParser() -> ParserType& { return parser_; }
     auto GetNumTasks() const -> size_t { return tasks_.size(); }
 
-    void GetTimeUntilExpiryForTasks(std::vector<std::tuple<std::string, Duration>>& status) const {
-        std::lock_guard lock{tasks_mtx_};
+    auto GetTasksStatus() const -> std::vector<std::string> {
+        std::vector<std::string> status{};
         auto now = clock_.Now();
-        status.clear();
+
+        std::lock_guard lock{tasks_mtx_};
         status.reserve(tasks_.size());
         for (const auto& task : tasks_) {
-            status.emplace_back(task.GetName(), task.TimeUntilExpiry(now));
+            status.emplace_back(task.GetStatus(now));
         }
+        return status;
     }
 
 private:
+    auto MakeTask(std::string name, std::string_view cron_expr, TaskFn work) const -> std::optional<Task> {
+        auto data = parser_(cron_expr);
+        if (!data) {
+            return std::nullopt;
+        }
+
+        Task task(std::move(name), Schedule(std::move(data.value())), std::move(work));
+        if (!task.CalculateNext(clock_.Now())) {
+            return std::nullopt;
+        }
+        return task;
+    }
+
     void UnsafeSortTasks() { std::ranges::sort(tasks_, std::less<>{}); }
 
     std::vector<Task> tasks_{};

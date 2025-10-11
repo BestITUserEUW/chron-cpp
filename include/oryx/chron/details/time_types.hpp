@@ -63,7 +63,7 @@ auto ReplaceWithNumeric(std::string& data, NamesView names) -> std::string& {
 }
 
 inline auto ReplaceDayNameWithNumeric(std::string& data) -> std::string& {
-    return ReplaceWithNumeric<Weeks>(data, kDayNames);
+    return ReplaceWithNumeric<Weekdays>(data, kDayNames);
 }
 
 inline auto ReplaceMonthNameWithNumeric(std::string& data) -> std::string& {

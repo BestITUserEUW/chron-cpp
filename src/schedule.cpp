@@ -19,16 +19,16 @@ auto Schedule::CalculateFrom(const TimePoint& from) const -> std::optional<TimeP
         year_month_day ymd = floor<days>(curr);
 
         // Add months until one of the allowed days are found, or stay at the current one.
-        if (data_.months.find(static_cast<Months>(unsigned(ymd.month()))) == data_.months.end()) {
+        if (!data_.months.contains(static_cast<Months>(unsigned(ymd.month())))) {
             auto next_month = ymd + months{1};
             sys_days s = next_month.year() / next_month.month() / 1;
             curr = s;
             date_changed = true;
         }
         // If all days are allowed (or the field is ignored via '?'), then the 'day of week' takes precedence.
-        else if (data_.days.size() != details::to_underlying(Days::Last)) {
+        else if (data_.days.size() != details::to_underlying(MonthDays::Last)) {
             // Add days until one of the allowed days are found, or stay at the current one.
-            if (data_.days.find(static_cast<Days>(unsigned(ymd.day()))) == data_.days.end()) {
+            if (!data_.days.contains(static_cast<MonthDays>(unsigned(ymd.day())))) {
                 sys_days s = ymd;
                 curr = s;
                 curr += days{1};
@@ -38,7 +38,7 @@ auto Schedule::CalculateFrom(const TimePoint& from) const -> std::optional<TimeP
             // Add days until the current weekday is one of the allowed weekdays
             year_month_weekday ymw = floor<days>(curr);
 
-            if (data_.weeks.find(static_cast<Weeks>(ymw.weekday().c_encoding())) == data_.weeks.end()) {
+            if (!data_.weeks.contains(static_cast<Weekdays>(ymw.weekday().c_encoding()))) {
                 sys_days s = ymd;
                 curr = s;
                 curr += days{1};
@@ -48,14 +48,14 @@ auto Schedule::CalculateFrom(const TimePoint& from) const -> std::optional<TimeP
 
         if (!date_changed) {
             auto date_time = ToCalendarTime(curr);
-            if (data_.hours.find(static_cast<Hours>(date_time.hour)) == data_.hours.end()) {
+            if (!data_.hours.contains(static_cast<Hours>(date_time.hour))) {
                 curr += hours{1};
                 curr -= minutes{date_time.min};
                 curr -= seconds{date_time.sec};
-            } else if (data_.minutes.find(static_cast<Minutes>(date_time.min)) == data_.minutes.end()) {
+            } else if (!data_.minutes.contains(static_cast<Minutes>(date_time.min))) {
                 curr += minutes{1};
                 curr -= seconds{date_time.sec};
-            } else if (data_.seconds.find(static_cast<Seconds>(date_time.sec)) == data_.seconds.end()) {
+            } else if (!data_.seconds.contains(static_cast<Seconds>(date_time.sec))) {
                 curr += seconds{1};
             } else {
                 done = true;

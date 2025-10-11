@@ -2,6 +2,8 @@
 #include "oryx/chron/parser.hpp"
 
 #include <chrono>
+#include <array>
+#include <span>
 #include <iostream>
 
 #include <oryx/chron/scheduler.hpp>
@@ -12,16 +14,16 @@ using namespace std::chrono_literals;
 
 namespace {
 
-auto DT(year_month_day ymd, hours h = hours{0}, minutes m = minutes{0}, seconds s = seconds{0})
+constexpr auto DT(year_month_day ymd, hours h = hours{0}, minutes m = minutes{0}, seconds s = seconds{0})
     -> system_clock::time_point {
     sys_days t = ymd;
     auto sum = t + h + m + s;
     return sum;
 }
 
-auto Test(const std::string& schedule,
+auto Test(std::string_view schedule,
           system_clock::time_point from,
-          const std::vector<system_clock::time_point>& expected_next) -> bool {
+          std::span<const system_clock::time_point> expected_next) -> bool {
     auto data = kParseExpression(schedule);
     bool res = data.has_value();
     if (res) {
@@ -50,7 +52,7 @@ auto Test(const std::string& schedule,
     return res;
 }
 
-auto Test(const std::string& schedule, system_clock::time_point from, system_clock::time_point expected_next) -> bool {
+auto Test(std::string_view schedule, system_clock::time_point from, system_clock::time_point expected_next) -> bool {
     auto data = kParseExpression(schedule);
     bool res = data.has_value();
     if (res) {
@@ -71,7 +73,7 @@ auto Test(const std::string& schedule, system_clock::time_point from, system_clo
 
 }  // namespace
 
-SCENARIO("Calculating next runtime") {
+TEST_CASE("Calculating next runtime") {
     REQUIRE(Test("0 0 * * * ?", DT(2010y / 1 / 1), DT(2010y / 1 / 1, hours{0})));
     REQUIRE(Test("0 0 * * * ?", DT(2010y / 1 / 1, hours{0}, minutes{0}, seconds{1}), DT(2010y / 1 / 1, hours{1})));
     REQUIRE(Test("0 0 * * * ?", DT(2010y / 1 / 1, hours{5}), DT(2010y / 1 / 1, hours{5})));
@@ -94,36 +96,37 @@ SCENARIO("Calculating next runtime") {
     // REQUIRE(test("0 0 * 31 APR,MAY ?", DT(2017y / 6 / 1), DT(2018y / may / 31)));
 }
 
-SCENARIO("Leap year") {
+TEST_CASE("Leap year") {
     REQUIRE(Test("0 0 * 29 FEB *", DT(2015y / 1 / 1), DT(2016y / 2 / 29)));
     REQUIRE(Test("0 0 * 29 FEB ?", DT(2018y / 1 / 1), DT(2020y / 2 / 29)));
     REQUIRE(
         Test("0 0 * 29 FEB ?", DT(2020y / 2 / 29, hours{15}, minutes{13}, seconds{13}), DT(2020y / 2 / 29, hours{16})));
 }
 
-SCENARIO("Multiple calculations") {
+TEST_CASE("Multiple calculations") {
     WHEN("Every 15 minutes, every 2nd hour") {
         REQUIRE(Test("0 0/15 0/2 * * ?", DT(2018y / 1 / 1, hours{13}, minutes{14}, seconds{59}),
-                     {DT(2018y / 1 / 1, hours{14}, minutes{00}), DT(2018y / 1 / 1, hours{14}, minutes{15}),
-                      DT(2018y / 1 / 1, hours{14}, minutes{30}), DT(2018y / 1 / 1, hours{14}, minutes{45}),
-                      DT(2018y / 1 / 1, hours{16}, minutes{00}), DT(2018y / 1 / 1, hours{16}, minutes{15})}));
+                     std::array{DT(2018y / 1 / 1, hours{14}, minutes{00}), DT(2018y / 1 / 1, hours{14}, minutes{15}),
+                                DT(2018y / 1 / 1, hours{14}, minutes{30}), DT(2018y / 1 / 1, hours{14}, minutes{45}),
+                                DT(2018y / 1 / 1, hours{16}, minutes{00}), DT(2018y / 1 / 1, hours{16}, minutes{15})}));
     }
 
     WHEN("Every top of the hour, every 12th hour, during 12 and 13:th July") {
-        REQUIRE(Test("0 0 0/12 12-13 JUL ?", DT(2018y / 1 / 1),
-                     {DT(2018y / 7 / 12, hours{0}), DT(2018y / 7 / 12, hours{12}), DT(2018y / 7 / 13, hours{0}),
-                      DT(2018y / 7 / 13, hours{12}), DT(2019y / 7 / 12, hours{0}), DT(2019y / 7 / 12, hours{12})}));
+        REQUIRE(Test(
+            "0 0 0/12 12-13 JUL ?", DT(2018y / 1 / 1),
+            std::array{DT(2018y / 7 / 12, hours{0}), DT(2018y / 7 / 12, hours{12}), DT(2018y / 7 / 13, hours{0}),
+                       DT(2018y / 7 / 13, hours{12}), DT(2019y / 7 / 12, hours{0}), DT(2019y / 7 / 12, hours{12})}));
     }
 
     WHEN("Every first of the month, 15h, every second month, 22m") {
         REQUIRE(Test("0 22 15 1 * ?", DT(2018y / 1 / 1),
-                     {DT(2018y / 1 / 1, hours{15}, minutes{22}), DT(2018y / 2 / 1, hours{15}, minutes{22}),
-                      DT(2018y / 3 / 1, hours{15}, minutes{22}), DT(2018y / 4 / 1, hours{15}, minutes{22}),
-                      DT(2018y / 5 / 1, hours{15}, minutes{22}), DT(2018y / 6 / 1, hours{15}, minutes{22}),
-                      DT(2018y / 7 / 1, hours{15}, minutes{22}), DT(2018y / 8 / 1, hours{15}, minutes{22}),
-                      DT(2018y / 9 / 1, hours{15}, minutes{22}), DT(2018y / 10 / 1, hours{15}, minutes{22}),
-                      DT(2018y / 11 / 1, hours{15}, minutes{22}), DT(2018y / 12 / 1, hours{15}, minutes{22}),
-                      DT(2019y / 1 / 1, hours{15}, minutes{22})}));
+                     std::array{DT(2018y / 1 / 1, hours{15}, minutes{22}), DT(2018y / 2 / 1, hours{15}, minutes{22}),
+                                DT(2018y / 3 / 1, hours{15}, minutes{22}), DT(2018y / 4 / 1, hours{15}, minutes{22}),
+                                DT(2018y / 5 / 1, hours{15}, minutes{22}), DT(2018y / 6 / 1, hours{15}, minutes{22}),
+                                DT(2018y / 7 / 1, hours{15}, minutes{22}), DT(2018y / 8 / 1, hours{15}, minutes{22}),
+                                DT(2018y / 9 / 1, hours{15}, minutes{22}), DT(2018y / 10 / 1, hours{15}, minutes{22}),
+                                DT(2018y / 11 / 1, hours{15}, minutes{22}), DT(2018y / 12 / 1, hours{15}, minutes{22}),
+                                DT(2019y / 1 / 1, hours{15}, minutes{22})}));
     }
 
     WHEN("“At minute 0 past hour 0 and 12 on day-of-month 1 in every 2nd month") {
@@ -132,35 +135,38 @@ SCENARIO("Multiple calculations") {
 
     WHEN("“At 00:05 in August") {
         REQUIRE(Test("0 5 0 * 8 ?", DT(2018y / 3 / 10, hours{16}, minutes{51}),
-                     {DT(2018y / 8 / 1, hours{0}, minutes{5}), DT(2018y / 8 / 2, hours{0}, minutes{5})}));
+                     std::array{DT(2018y / 8 / 1, hours{0}, minutes{5}), DT(2018y / 8 / 2, hours{0}, minutes{5})}));
     }
 
     WHEN("At 22:00 on every day-of-week from Monday through Friday") {
-        REQUIRE(Test("0 0 22 ? * 1-5", DT(2021y / 12 / 15, hours{16}, minutes{51}),
-                     {DT(2021y / 12 / 15, hours{22}), DT(2021y / 12 / 16, hours{22}), DT(2021y / 12 / 17, hours{22}),
-                      // 18-19 are weekend
-                      DT(2021y / 12 / 20, hours{22}), DT(2021y / 12 / 21, hours{22})}));
+        REQUIRE(Test(
+            "0 0 22 ? * 1-5", DT(2021y / 12 / 15, hours{16}, minutes{51}),
+            std::array{DT(2021y / 12 / 15, hours{22}), DT(2021y / 12 / 16, hours{22}), DT(2021y / 12 / 17, hours{22}),
+                       // 18-19 are weekend
+                       DT(2021y / 12 / 20, hours{22}), DT(2021y / 12 / 21, hours{22})}));
     }
 }
 
-SCENARIO("Examples from README.md") {
+TEST_CASE("Examples from README.md") {
     REQUIRE(Test("* * * * * ?", DT(2018y / 03 / 1, hours{12}, minutes{13}, seconds{45}),
-                 {DT(2018y / 03 / 1, hours{12}, minutes{13}, seconds{45}),
-                  DT(2018y / 03 / 1, hours{12}, minutes{13}, seconds{46}),
-                  DT(2018y / 03 / 1, hours{12}, minutes{13}, seconds{47}),
-                  DT(2018y / 03 / 1, hours{12}, minutes{13}, seconds{48})}));
+                 std::array{DT(2018y / 03 / 1, hours{12}, minutes{13}, seconds{45}),
+                            DT(2018y / 03 / 1, hours{12}, minutes{13}, seconds{46}),
+                            DT(2018y / 03 / 1, hours{12}, minutes{13}, seconds{47}),
+                            DT(2018y / 03 / 1, hours{12}, minutes{13}, seconds{48})}));
 
-    REQUIRE(Test("0 0 12 * * MON-FRI", DT(2018y / 03 / 10, hours{12}, minutes{13}, seconds{45}),
-                 {DT(2018y / 03 / 12, hours{12}), DT(2018y / 03 / 13, hours{12}), DT(2018y / 03 / 14, hours{12}),
-                  DT(2018y / 03 / 15, hours{12}), DT(2018y / 03 / 16, hours{12}), DT(2018y / 03 / 19, hours{12})}));
+    REQUIRE(Test(
+        "0 0 12 * * MON-FRI", DT(2018y / 03 / 10, hours{12}, minutes{13}, seconds{45}),
+        std::array{DT(2018y / 03 / 12, hours{12}), DT(2018y / 03 / 13, hours{12}), DT(2018y / 03 / 14, hours{12}),
+                   DT(2018y / 03 / 15, hours{12}), DT(2018y / 03 / 16, hours{12}), DT(2018y / 03 / 19, hours{12})}));
 
     REQUIRE(Test("0 0 12 1/2 * ?", DT(2018y / 01 / 2, hours{12}, minutes{13}, seconds{45}),
-                 {DT(2018y / 1 / 3, hours{12}), DT(2018y / 1 / 5, hours{12}), DT(2018y / 1 / 7, hours{12})}));
+                 std::array{DT(2018y / 1 / 3, hours{12}), DT(2018y / 1 / 5, hours{12}), DT(2018y / 1 / 7, hours{12})}));
 
-    REQUIRE(Test("0 0 */12 ? * *", DT(2018y / 8 / 15, hours{13}, minutes{13}, seconds{45}),
-                 {DT(2018y / 8 / 16, hours{0}), DT(2018y / 8 / 16, hours{12}), DT(2018y / 8 / 17, hours{0})}));
+    REQUIRE(
+        Test("0 0 */12 ? * *", DT(2018y / 8 / 15, hours{13}, minutes{13}, seconds{45}),
+             std::array{DT(2018y / 8 / 16, hours{0}), DT(2018y / 8 / 16, hours{12}), DT(2018y / 8 / 17, hours{0})}));
 }
 
-SCENARIO("Unable to calculate time point") {
+TEST_CASE("Unable to calculate time point") {
     REQUIRE_FALSE(Test("0 0 * 31 FEB *", DT(2021y / 1 / 1), DT(2022y / 1 / 1)));
 }

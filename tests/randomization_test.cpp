@@ -1,6 +1,6 @@
 #include "doctest.hpp"
 
-#include <string>
+#include <string_view>
 
 #include <oryx/chron/randomization.hpp>
 #include <oryx/chron/scheduler.hpp>
@@ -9,61 +9,59 @@ using namespace oryx::chron;
 
 namespace {
 
-void Test(const char* const random_schedule, bool expect_failure = false) {
-    Randomization cr;
+static Randomization rand{};
+static Scheduler scheduler{};
 
-    for (int i = 0; i < 5000; ++i) {
-        auto res = cr.Parse(random_schedule);
-        auto schedule = res.value_or(std::string{});
-
-        Scheduler scheduler;
-
-        if (expect_failure) {
+template <bool ExpectFailure = false>
+void Test(const std::string_view rand_expr) {
+    for (auto i = 0; i < 5000; ++i) {
+        auto cron_expr = rand.Parse(rand_expr);
+        if constexpr (ExpectFailure) {
             // Parsing of random might succeed, but it yields an invalid schedule.
-            auto r = res.has_value() && scheduler.AddSchedule("validate schedule", schedule, [](auto&) {});
-            REQUIRE_FALSE(r);
+            REQUIRE_FALSE((cron_expr && scheduler.AddSchedule("validate schedule", *cron_expr, [](auto) {})));
         } else {
-            REQUIRE(res.has_value());
-            REQUIRE(scheduler.AddSchedule("validate schedule", schedule, [](auto&) {}));
+            REQUIRE(cron_expr);
+            REQUIRE(scheduler.AddSchedule("validate schedule", *cron_expr, [](auto) {}));
         }
+        scheduler.ClearSchedules();
     }
 }
 
 }  // namespace
 
-SCENARIO("Randomize all the things") {
-    const char* random_schedule = "R(0-59) R(0-59) R(0-23) R(1-31) R(1-12) ?";
+TEST_CASE("Randomize all the things") {
+    static constexpr std::string_view kRandomSchedule = "R(0-59) R(0-59) R(0-23) R(1-31) R(1-12) ?";
 
-    SUBCASE(random_schedule) {
-        THEN("Only valid schedules generated") { Test(random_schedule); }
+    SUBCASE(kRandomSchedule.data()) {
+        THEN("Only valid schedules generated") { Test(kRandomSchedule); }
     }
 }
 
-SCENARIO("Randomize all the things with reverse ranges") {
-    const char* random_schedule = "R(45-15) R(30-0) R(18-2) R(28-15) R(8-3) ?";
+TEST_CASE("Randomize all the things with reverse ranges") {
+    static constexpr std::string_view kRandomSchedule = "R(45-15) R(30-0) R(18-2) R(28-15) R(8-3) ?";
 
-    SUBCASE(random_schedule) {
-        THEN("Only valid schedules generated") { Test(random_schedule); }
+    SUBCASE(kRandomSchedule.data()) {
+        THEN("Only valid schedules generated") { Test(kRandomSchedule); }
     }
 }
 
-SCENARIO("Randomize all the things - day of week") {
-    const char* random_schedule = "R(0-59) R(0-59) R(0-23) ? R(1-12) R(0-6)";
+TEST_CASE("Randomize all the things - day of week") {
+    static constexpr std::string_view kRandomSchedule = "R(0-59) R(0-59) R(0-23) ? R(1-12) R(0-6)";
 
-    SUBCASE(random_schedule) {
-        THEN("Only valid schedules generated") { Test(random_schedule); }
+    SUBCASE(kRandomSchedule.data()) {
+        THEN("Only valid schedules generated") { Test(kRandomSchedule); }
     }
 }
 
-SCENARIO("Randomize all the things with reverse ranges - day of week") {
-    const char* random_schedule = "R(45-15) R(30-0) R(18-2) ? R(8-3) R(4-1)";
+TEST_CASE("Randomize all the things with reverse ranges - day of week") {
+    static constexpr std::string_view kRandomSchedule = "R(45-15) R(30-0) R(18-2) ? R(8-3) R(4-1)";
 
-    SUBCASE(random_schedule) {
-        THEN("Only valid schedules generated") { Test(random_schedule); }
+    SUBCASE(kRandomSchedule.data()) {
+        THEN("Only valid schedules generated") { Test(kRandomSchedule); }
     }
 }
 
-SCENARIO("Test readme examples") {
+TEST_CASE("Test readme examples") {
     SUBCASE("0 0 R(13-20) * * ?") {
         THEN("Valid schedule generated") { Test("0 0 R(13-20) * * ?"); }
     }
@@ -77,7 +75,7 @@ SCENARIO("Test readme examples") {
     }
 }
 
-SCENARIO("Randomization using text versions of days and months") {
+TEST_CASE("Randomization using text versions of days and months") {
     SUBCASE("0 0 0 ? * R(TUE-FRI)") {
         THEN("Valid schedule generated") { Test("0 0 0 ? * R(TUE-FRI)"); }
     }
@@ -98,19 +96,19 @@ SCENARIO("Randomization using text versions of days and months") {
     SUBCASE("Invalid schedule") {
         THEN("No schedule generated") {
             // Day of month specified - not allowed with day of week
-            Test("0 0 0 1 R(JAN-DEC) R(MON-SUN)", true);
+            Test<true>("0 0 0 1 R(JAN-DEC) R(MON-SUN)");
         }
         AND_THEN("No schedule generated") {
             // Invalid range
-            Test("0 0 0 ? R(JAN) *", true);
+            Test<true>("0 0 0 ? R(JAN) *");
         }
         AND_THEN("No schedule generated") {
             // Days in month field
-            Test("0 0 0 ? R(MON-TUE) *", true);
+            Test<true>("0 0 0 ? R(MON-TUE) *");
         }
         AND_THEN("No schedule generated") {
             // Month in day field
-            Test("0 0 0 ? * R(JAN-JUN)", true);
+            Test<true>("0 0 0 ? * R(JAN-JUN)");
         }
     }
 }
