@@ -156,7 +156,7 @@ struct Parser {
             if constexpr (std::is_convertible_v<decltype(part), std::string_view>)
                 return ConvertFromStringRangeToNumberRange<T>(part, numbers);
             else
-                return ConvertFromStringRangeToNumberRange(std::string_view(part.begin(), part.size()), numbers);
+                return ConvertFromStringRangeToNumberRange(std::string_view(&*part.begin(), part.size()), numbers);
         });
     }
 

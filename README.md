@@ -32,7 +32,8 @@ using namespace std::chrono_literals;
 auto main() -> int {
     oryx::chron::Scheduler scheduler;
 
-    scheduler.AddSchedule("Task-1", "* * * * * ?", [](auto info) { std::cout << info.name << " called with delay" << task.delay << "\n"; });
+    scheduler.AddSchedule("Task-1", "* * * * * ?",
+                          [](auto info) { std::cout << info.name << " called with delay " << info.delay << "\n"; });
     for (;;) {
         scheduler.Tick();
         std::this_thread::sleep_for(1s);
@@ -49,14 +50,13 @@ In order to trigger execution of callbacks one must call `oryx::chron::Scheduler
 #include <iostream>
 
 #include <oryx/chron.hpp>
-#include "oryx/chron/task.hpp"
 
 using namespace std::chrono_literals;
 
 auto main() -> int {
     oryx::chron::Scheduler scheduler;
 
-    scheduler.AddSchedule("Task-1", "* * * * * ?", [](const oryx::chron::TaskInfo& info) {
+    scheduler.AddSchedule("Task-1", "* * * * * ?", [](auto info) {
         if (info.delay >= 1s) {
             std::cout << info.name << ": my scheduler is ticking to slow\n";
         }
@@ -72,20 +72,40 @@ auto main() -> int {
 
 ### Adding a batch of schedules at once
 
-#### TODO
+```cpp
+#include <thread>
+#include <iostream>
+#include <cassert>
 
+#include <oryx/chron.hpp>
 
+using namespace std::chrono_literals;
 
-### Removing schedules from `oryx::chron::Scheduler`
+auto main() -> int {
+    oryx::chron::Scheduler scheduler;
+
+    assert(scheduler.AddScheduleBatch([](auto add_schedule) {
+        auto task = [](auto info) { std::cout << info.name << " was called\n"; };
+        for (auto i = 0; i < 20; i++) {
+            assert(add_schedule(std::to_string(i), "*/2 * * * * ?", task));
+        }
+    }));
+
+    for (;;) {
+        scheduler.Tick();
+        std::this_thread::sleep_for(1s);
+    }
+
+    return 0;
+}
+```
+
+### Removing schedules
 
 `oryx::chron::Scheduler` offers two convenient functions to remove schedules:
 
-- `ClearSchedules()` will remove all schedules
-- `RemoveSchedule(std::string)` will remove a specific schedule
-
-For example, `scheduler.RemoveSchedule("Hello from Cron")` will remove the previously added task.
-
-
+- `ClearSchedules` will remove all schedules
+- `RemoveSchedule` will remove a specific schedule
 
 ### ThreadSafe Scheduler
 
@@ -106,10 +126,10 @@ using namespace oryx::chron;
 
 std::atomic<bool> stop_requested{};
 
-void Ticker(MTScheduler<UTCClock>& scheduler) {
+void Ticker(auto& scheduler) {
     while (!stop_requested) {
         scheduler.Tick();
-        std::this_thread::sleep_for(1s);
+        std::this_thread::sleep_for(50ms);
     }
 }
 
@@ -117,15 +137,14 @@ auto main() -> int {
     signal(SIGINT, [](int sig) { stop_requested = true; });
 
     MTScheduler<UTCClock> scheduler{};
-    std::thread worker{Ticker, std::ref(scheduler)};
+    std::thread worker{Ticker<decltype(scheduler)>, std::ref(scheduler)};
     uint64_t counter{};
     std::string task_name{};
     while (!stop_requested) {
         task_name = "Task-" + std::to_string(counter++);
-        scheduler.AddSchedule(task_name, "* * * * * ?",
-                              [](TaskInfo info) { std::cout << info.name << ": Called\n"; });
+        scheduler.AddSchedule(task_name, "* * * * * ?", [](TaskInfo info) { std::cout << info.name << ": Called\n"; });
         std::cout << "Scheduled: " << task_name << "\n";
-        std::this_thread::sleep_for(1s);
+        std::this_thread::sleep_for(50ms);
     }
 
     worker.join();
@@ -145,7 +164,7 @@ If you you are frequently parsing a lot of similar expressions you can speed up 
 
 The following clocks are available for the scheduler:
 
-- (default) `LocalClock` offsets by system_clocks time
+- `LocalClock` (default) offsets by operating systems time
 - `UTCClock` offsets by 0
 - `TzClock` offsets by 0 until a valid timezone has been set with `TrySetTimezone`
 
