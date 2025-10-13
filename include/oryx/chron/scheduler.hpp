@@ -25,7 +25,7 @@ public:
 
     auto AddSchedule(std::string name, std::string_view cron_expr, TaskFn work) -> bool {
         auto task = MakeTask(std::move(name), cron_expr, std::move(work));
-        if (!task) {
+        if (!task) [[unlikely]] {
             return false;
         }
 
@@ -36,18 +36,20 @@ public:
     }
 
     template <typename F>
-    auto AddScheduleBatch(F&& fn, std::optional<size_t> num_tasks = std::nullopt) -> bool {
+    auto AddScheduleBatch(F&& fn, std::optional<std::size_t> num_tasks = {}) -> bool {
         std::vector<Task> tasks;
         if (num_tasks) tasks.reserve(num_tasks.value());
         auto add_schedule = [this, &tasks](std::string name, std::string_view cron_expr, TaskFn work) -> bool {
             auto task = MakeTask(std::move(name), cron_expr, work);
-            if (!task) return false;
+            if (!task) [[unlikely]] {
+                return false;
+            }
             tasks.emplace_back(std::move(task.value()));
             return true;
         };
 
         std::invoke(fn, std::move(add_schedule));
-        if (tasks.empty()) {
+        if (tasks.empty()) [[unlikely]] {
             return false;
         }
 
@@ -63,12 +65,9 @@ public:
         tasks_.clear();
     }
 
-    void RemoveSchedule(const std::string& name) {
+    void RemoveSchedule(std::string_view name) {
         std::lock_guard lock{tasks_mtx_};
-        auto it = std::ranges::find_if(tasks_, [&name](const Task& to_compare) { return name == to_compare; });
-        if (it != tasks_.end()) {
-            tasks_.erase(it);
-        }
+        std::erase_if(tasks_, [name](const Task& t) { return t == name; });
     }
 
     void RecalculateSchedules() {
@@ -76,10 +75,9 @@ public:
         for (auto& task : tasks_) task.CalculateNext(clock_.Now() + std::chrono::seconds(1));
     }
 
-    auto Tick(TimePoint now) -> size_t {
+    auto Tick(TimePoint now) -> std::size_t {
         std::lock_guard lock{tasks_mtx_};
 
-        size_t executed_count{};
         if (!first_tick_) [[likely]] {
             auto diff = now - last_tick_;
 
@@ -96,21 +94,19 @@ public:
 
         last_tick_ = now;
         if (tasks_.empty()) {
-            return executed_count;
+            return 0;
         }
 
-        for (auto& task : tasks_) {
-            if (task.IsExpired(now)) {
-                task.Execute(now);
-                if (!task.CalculateNext(now + std::chrono::seconds(1))) {
-                    auto it = std::ranges::find_if(tasks_, [&task](const Task& t) { return task.GetName() == t; });
-                    if (it != tasks_.end()) {
-                        tasks_.erase(it);
-                    }
-                }
-                ++executed_count;
+        std::size_t executed_count{};
+        std::erase_if(tasks_, [&executed_count, now](Task& task) {
+            if (!task.IsExpired(now)) {
+                return false;
             }
-        }
+
+            task.Execute(now);
+            executed_count++;
+            return !task.CalculateNext(now + std::chrono::seconds(1));
+        });
 
         if (executed_count > 0) {
             UnsafeSortTasks();
@@ -119,19 +115,23 @@ public:
         return executed_count;
     }
 
-    auto Tick() -> size_t { return Tick(clock_.Now()); }
+    auto Tick() -> std::size_t { return Tick(clock_.Now()); }
 
     auto TimeUntilNext() const -> Duration {
         std::lock_guard lock{tasks_mtx_};
         if (tasks_.empty()) {
-            return std::chrono::minutes::max();
+            return Duration::max();
         }
         return tasks_[0].TimeUntilExpiry(clock_.Now());
     }
 
     auto GetClock() -> ClockType& { return clock_; }
     auto GetParser() -> ParserType& { return parser_; }
-    auto GetNumTasks() const -> size_t { return tasks_.size(); }
+
+    auto GetNumTasks() const -> std::size_t {
+        std::lock_guard lock{tasks_mtx_};
+        return tasks_.size();
+    }
 
     auto GetTasksStatus() const -> std::vector<std::string> {
         std::vector<std::string> status{};
@@ -148,12 +148,12 @@ public:
 private:
     auto MakeTask(std::string name, std::string_view cron_expr, TaskFn work) const -> std::optional<Task> {
         auto data = parser_(cron_expr);
-        if (!data) {
+        if (!data) [[unlikely]] {
             return std::nullopt;
         }
 
         Task task(std::move(name), Schedule(std::move(data.value())), std::move(work));
-        if (!task.CalculateNext(clock_.Now())) {
+        if (!task.CalculateNext(clock_.Now())) [[unlikely]] {
             return std::nullopt;
         }
         return task;

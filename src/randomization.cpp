@@ -129,8 +129,9 @@ auto Randomization::Parse(std::string_view cron_schedule) -> std::optional<std::
     std::set<Months> month_range{};
     if (selected_value == kSelectedValueNone) {
         // Month is not specific, get the range.
-        bool success = details::Parser::ConvertFromStringRangeToNumberRange(match.get<5>().to_view(), month_range);
-        if (!success) return std::nullopt;
+        if (!details::Parser::ConvertFromStringRangeToNumberRange(match.get<5>().to_view(), month_range)) [[unlikely]] {
+            return std::nullopt;
+        }
     } else {
         month_range.emplace(static_cast<Months>(selected_value));
     }

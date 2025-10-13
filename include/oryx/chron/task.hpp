@@ -19,7 +19,6 @@ class Task {
 public:
     Task(std::string name, Schedule schedule, TaskFn task);
 
-    auto operator=(const Task &) -> Task & = default;
     auto operator>(const Task &other) const -> bool { return next_schedule_ > other.next_schedule_; }
     auto operator<(const Task &other) const -> bool { return next_schedule_ < other.next_schedule_; }
 

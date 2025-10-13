@@ -22,14 +22,15 @@ auto ExpressionParser::operator()(std::string_view cron_expression) const -> std
 
     if (!cron_expression.empty() && cron_expression[0] == '@') {
         auto it = std::ranges::find(kShortcuts, cron_expression, &DollarExprPair::expr);
-        if (it != kShortcuts.end()) {
+        if (it != kShortcuts.end()) [[likely]] {
             cron_expression = it->cron;
         }
     }
 
     bool valid{};
     ChronData data{};
-    if (auto match = ctre::match<R"#(^\s*(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s*$)#">(cron_expression)) {
+    if (auto match = ctre::match<R"#(^\s*(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s*$)#">(cron_expression))
+        [[likely]] {
         valid = details::Parser::ValidateNumeric<Seconds>(match.get<1>().to_view(), data.seconds);
         valid &= details::Parser::ValidateNumeric<Minutes>(match.get<2>().to_view(), data.minutes);
         valid &= details::Parser::ValidateNumeric<Hours>(match.get<3>().to_view(), data.hours);
@@ -41,7 +42,7 @@ auto ExpressionParser::operator()(std::string_view cron_expression) const -> std
         valid &= details::Parser::ValidateDateVsMonths(data);
     }
 
-    if (!valid) {
+    if (!valid) [[unlikely]] {
         return std::nullopt;
     }
     return data;

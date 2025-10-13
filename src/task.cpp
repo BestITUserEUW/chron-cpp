@@ -52,7 +52,7 @@ auto Task::IsExpired(TimePoint now) const -> bool { return valid_ && now >= last
 auto Task::GetStatus(TimePoint now) const -> std::string {
     auto dt = Schedule::ToCalendarTime(next_schedule_);
     auto expires_in = duration_cast<milliseconds>(TimeUntilExpiry(now));
-    return std::format("'{}' expires in => {}-{}-{} {}:{}:{}", GetName(), expires_in, dt.year, dt.month, dt.day,
-                       dt.hour, dt.min, dt.sec);
+    return std::format("'{}' expires in => {}-{}-{} {}:{}:{}", name_, expires_in, dt.year, dt.month, dt.day, dt.hour,
+                       dt.min, dt.sec);
 }
 }  // namespace oryx::chron
