@@ -66,8 +66,12 @@ jobs:
         include:
           - name: "ASan"
             extra-flags: "-DORYX_CHRON_SANITIZE_ADDRESS=ON"
+          - name: "TSan"
+            extra-flags: "-DORYX_CHRON_SANITIZE_THREAD=ON" # Not doing much right now
           - name: "Optimized Build"
             extra-flags: "-DCMAKE_CXX_FLAGS=-O3"
+          - name: "Shared Build"
+            extra-flags: "-DORYX_CHRON_BUILD_SHARED_LIBS=ON"
 
     name: "${{ github.job }} ${{ matrix.name }}"
     runs-on: ubuntu-latest

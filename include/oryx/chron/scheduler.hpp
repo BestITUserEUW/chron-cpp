@@ -8,16 +8,16 @@
 #include <chrono>
 #include <vector>
 
-#include <oryx/chron/traits.hpp>
-#include <oryx/chron/task.hpp>
-#include <oryx/chron/clock.hpp>
-#include <oryx/chron/chrono_types.hpp>
-#include <oryx/chron/parser.hpp>
+#include "common.hpp"
+#include "traits.hpp"
+#include "clock.hpp"
+#include "parser.hpp"
+#include "task.hpp"
 
 namespace oryx::chron {
 
 template <traits::Clock ClockType = LocalClock,
-          traits::BasicLockable MutexType = details::NullMutex,
+          traits::BasicLockable MutexType = NullMutex,
           traits::Parser ParserType = ExpressionParser>
 class Scheduler {
 public:
@@ -67,7 +67,7 @@ public:
 
     void RemoveSchedule(std::string_view name) {
         std::lock_guard lock{tasks_mtx_};
-        std::erase_if(tasks_, [name](const Task& t) { return t == name; });
+        std::erase_if(tasks_, [name](const Task& t) { return t.GetName() == name; });
     }
 
     void RecalculateSchedules() {
@@ -170,7 +170,7 @@ private:
 };
 
 template <traits::Clock ClockType = LocalClock>
-using CScheduler = Scheduler<ClockType, details::NullMutex, CachedExpressionParser<details::NullMutex>>;
+using CScheduler = Scheduler<ClockType, NullMutex, CachedExpressionParser<NullMutex>>;
 
 template <traits::Clock ClockType = LocalClock>
 using MTScheduler = Scheduler<ClockType, std::mutex>;

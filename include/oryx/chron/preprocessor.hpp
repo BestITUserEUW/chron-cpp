@@ -1,6 +1,6 @@
 #pragma once
 
-#include <oryx/chron/traits.hpp>
+#include "traits.hpp"
 
 namespace oryx::chron {
 
@@ -22,11 +22,11 @@ struct Processors<Curr, Rest...> {
     }
 };
 
-struct DollarExpressionProcessor {
+struct ORYX_CHRON_API DollarExpressionProcessor {
     static auto Process(std::string data) noexcept -> std::string;
 };
 
-struct WeekMonthDayLiteralProcessor {
+struct ORYX_CHRON_API WeekMonthDayLiteralProcessor {
     static auto Process(std::string data) noexcept -> std::string;
 };
 

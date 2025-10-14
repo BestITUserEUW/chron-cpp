@@ -29,6 +29,7 @@ endif()
 
 if (ORYX_CHRON_BUILD_SHARED_LIBS)
     add_library(${PROJECT_NAME} SHARED)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC ORYX_CHRON_BUILD_SHARED_LIBS)
     set_target_properties(${PROJECT_NAME} PROPERTIES SOVERSION ${PROJECT_VERSION})
 else()
     add_library(${PROJECT_NAME} STATIC)
@@ -40,6 +41,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     target_compile_options(${PROJECT_NAME} 
         PRIVATE
             /W4
+        PUBLIC
+            $<$<BOOL:${ORYX_CHRON_BUILD_SHARED_LIBS}>:/wd4251>
     )
 else()
     target_compile_options(${PROJECT_NAME} 

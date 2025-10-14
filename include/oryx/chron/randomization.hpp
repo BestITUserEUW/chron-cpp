@@ -4,8 +4,11 @@
 #include <optional>
 #include <random>
 
+#include "common.hpp"
+
 namespace oryx::chron {
-class Randomization {
+
+class ORYX_CHRON_API Randomization {
 public:
     Randomization();
 

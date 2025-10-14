@@ -3,8 +3,8 @@
 #include <functional>
 #include <string>
 
-#include <oryx/chron/schedule.hpp>
-#include <oryx/chron/chrono_types.hpp>
+#include "common.hpp"
+#include "schedule.hpp"
 
 namespace oryx::chron {
 
@@ -15,7 +15,7 @@ struct TaskInfo {
 
 using TaskFn = std::function<void(TaskInfo)>;
 
-class Task {
+class ORYX_CHRON_API Task {
 public:
     Task(std::string name, Schedule schedule, TaskFn task);
 
@@ -40,13 +40,5 @@ private:
     TimePoint last_run_;
     bool valid_;
 };
-
-inline auto operator==(std::string_view lhs, const Task &rhs) -> bool { return lhs == rhs.GetName(); }
-
-inline auto operator==(const Task &lhs, std::string_view rhs) -> bool { return lhs.GetName() == rhs; }
-
-inline auto operator!=(std::string_view lhs, const Task &rhs) -> bool { return !(lhs == rhs); }
-
-inline auto operator!=(const Task &lhs, std::string_view rhs) -> bool { return !(lhs == rhs); }
 
 }  // namespace oryx::chron

@@ -1,7 +1,8 @@
 #include <oryx/chron/task.hpp>
 
 #include <format>
-#include "oryx/chron/chrono_types.hpp"
+
+#include <oryx/chron/common.hpp>
 
 using namespace std::chrono;
 

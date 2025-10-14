@@ -1,8 +1,8 @@
 #include <optional>
 
 #include <oryx/chron/schedule.hpp>
+#include <oryx/chron/common.hpp>
 #include <oryx/chron/details/to_underlying.hpp>
-#include <oryx/chron/chrono_types.hpp>
 
 using namespace std::chrono;
 

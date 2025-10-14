@@ -4,18 +4,18 @@
 #include <mutex>
 #include <chrono>
 
-#include <oryx/chron/traits.hpp>
-#include <oryx/chron/chrono_types.hpp>
+#include "common.hpp"
+#include "traits.hpp"
 
 namespace oryx::chron {
 
-class UTCClock {
+class ORYX_CHRON_API UTCClock {
 public:
     auto Now() const -> TimePoint { return Clock::now(); }
     auto UtcOffset(TimePoint) const -> std::chrono::seconds { return std::chrono::seconds(0); }
 };
 
-class LocalClock {
+class ORYX_CHRON_API LocalClock {
 public:
     auto Now() const -> TimePoint {
         auto now = Clock::now();
@@ -25,7 +25,7 @@ public:
     auto UtcOffset(TimePoint now) const -> std::chrono::seconds;
 };
 
-class TzClock {
+class ORYX_CHRON_API TzClock {
 public:
     auto Now() const -> TimePoint {
         auto now = Clock::now();
