@@ -4,6 +4,7 @@
 
 #include <oryx/chron/details/parser.hpp>
 #include <oryx/chron/preprocessor.hpp>
+#include <oryx/chron/common.hpp>
 
 namespace oryx::chron {
 
@@ -32,5 +33,11 @@ auto ExpressionParser::operator()(std::string_view cron_expression) const -> std
     }
     return data;
 }
+
+template class ORYX_CHRON_API CachedExpressionParser<NullMutex>;
+template class ORYX_CHRON_API CachedExpressionParser<std::mutex>;
+
+static_assert(traits::Parser<ExpressionParser>);
+static_assert(traits::Parser<CachedExpressionParser<NullMutex>>);
 
 }  // namespace oryx::chron

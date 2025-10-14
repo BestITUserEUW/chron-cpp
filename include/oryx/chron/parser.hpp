@@ -55,9 +55,6 @@ private:
     mutable std::vector<Pair> cache_{};
 };
 
-static_assert(traits::Parser<ExpressionParser>);
-static_assert(traits::Parser<CachedExpressionParser<>>);
-
 inline constexpr ExpressionParser kParseExpression{};
 
 }  // namespace oryx::chron

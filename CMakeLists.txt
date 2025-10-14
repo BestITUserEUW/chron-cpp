@@ -73,6 +73,7 @@ target_sources(${PROJECT_NAME}
         src/preprocessor.cpp
         src/randomization.cpp
         src/schedule.cpp
+        src/scheduler.cpp
         src/task.cpp
         src/parser.cpp
     PUBLIC
