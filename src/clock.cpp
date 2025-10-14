@@ -39,7 +39,7 @@ auto TzClock::TrySetTimezone(std::string_view name) -> bool {
 
     try {
         new_zone = locate_zone(name);
-    } catch (std::runtime_error &err) {
+    } catch (std::runtime_error &) {
         return false;
     }
 
