@@ -2,12 +2,13 @@
 
 #include <optional>
 
-#include <oryx/chron/chron_data.hpp>
-#include <oryx/chron/date_time.hpp>
-#include <oryx/chron/chrono_types.hpp>
+#include "common.hpp"
+#include "chron_data.hpp"
+#include "date_time.hpp"
 
 namespace oryx::chron {
-class Schedule {
+
+class ORYX_CHRON_API Schedule {
 public:
     explicit Schedule(ChronData data)
         : data_(std::move(data)) {}

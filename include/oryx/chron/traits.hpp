@@ -6,7 +6,7 @@
 #include <string_view>
 #include <type_traits>
 
-#include "chrono_types.hpp"
+#include "common.hpp"
 #include "chron_data.hpp"
 
 namespace oryx::chron::traits {

@@ -1,4 +1,3 @@
-
 #include <oryx/chron/clock.hpp>
 
 #ifdef WIN32

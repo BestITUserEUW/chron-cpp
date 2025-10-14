@@ -3,8 +3,6 @@
 #include <cstdint>
 #include <set>
 
-#include <oryx/chron/details/to_underlying.hpp>
-
 namespace oryx::chron::details {
 
 namespace traits {

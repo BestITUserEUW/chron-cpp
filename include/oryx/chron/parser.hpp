@@ -1,21 +1,23 @@
 #pragma once
 
-#include <optional>
 #include <mutex>
+#include <string_view>
+#include <optional>
+#include <functional>
 #include <algorithm>
 
-#include <oryx/chron/details/null_mutex.hpp>
-
+#include "common.hpp"
 #include "chron_data.hpp"
 #include "traits.hpp"
+#include "null_mutex.hpp"
 
 namespace oryx::chron {
 
-struct ExpressionParser {
+struct ORYX_CHRON_API ExpressionParser {
     auto operator()(std::string_view cron_expression) const -> std::optional<ChronData>;
 };
 
-template <traits::BasicLockable MutexType = details::NullMutex>
+template <traits::BasicLockable MutexType = NullMutex>
 class CachedExpressionParser : ExpressionParser {
 public:
     using Pair = std::pair<std::size_t, ChronData>;
