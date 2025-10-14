@@ -9,8 +9,6 @@
 #include <oryx/chron/chron_data.hpp>
 #include <oryx/chron/time_types.hpp>
 
-#include "string_split.hpp"
-#include "time_types.hpp"
 #include "string_cast.hpp"
 #include "in_range.hpp"
 #include "to_underlying.hpp"
@@ -151,26 +149,10 @@ struct Parser {
     }
 
     template <chron::traits::TimeType T>
-    static auto ProcessParts(auto&& parts, std::set<T>& numbers) -> bool {
-        return std::ranges::all_of(parts, [&numbers](auto&& part) {
-            if constexpr (std::is_convertible_v<decltype(part), std::string_view>)
-                return ConvertFromStringRangeToNumberRange<T>(part, numbers);
-            else
-                return ConvertFromStringRangeToNumberRange(std::string_view(&*part.begin(), part.size()), numbers);
-        });
-    }
-
-    template <chron::traits::TimeType T>
     static auto ValidateNumeric(std::string_view s, std::set<T>& numbers) -> bool {
-        return ProcessParts(std::views::split(s, ','), numbers);
-    }
-
-    template <chron::traits::TimeType T>
-    static auto ValidateLiteral(const std::string& s, std::set<T>& numbers, std::span<const std::string_view> names)
-        -> bool {
-        auto parts = details::StringSplit(s, ',');
-        std::ranges::for_each(parts, [&names](auto&& part) { details::ReplaceWithNumeric<T>(part, names); });
-        return ProcessParts(parts, numbers);
+        return std::ranges::all_of(std::views::split(s, ','), [&numbers](auto&& part) {
+            return ConvertFromStringRangeToNumberRange(std::string_view(&*part.begin(), part.size()), numbers);
+        });
     }
 
     static auto CheckDomVsDow(std::string_view dom, std::string_view dow) -> bool {
@@ -193,7 +175,7 @@ struct Parser {
 
         // If only day 31 is selected, ensure at least one month allows it
         if (data.days.size() == 1 && data.days.contains(MonthDays::Last)) {
-            if (!std::ranges::any_of(details::kMonthsWith31, [&data](Months m) { return data.months.contains(m); })) {
+            if (!std::ranges::any_of(kMonthsWith31, [&data](Months m) { return data.months.contains(m); })) {
                 return false;
             }
         }

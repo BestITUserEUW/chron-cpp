@@ -15,7 +15,7 @@ auto Schedule::CalculateFrom(const TimePoint& from) const -> std::optional<TimeP
     auto max_iterations = std::numeric_limits<uint16_t>::max();
 
     while (!done && --max_iterations > 0) {
-        bool date_changed = false;
+        bool date_changed{};
         year_month_day ymd = floor<days>(curr);
 
         // Add months until one of the allowed days are found, or stay at the current one.

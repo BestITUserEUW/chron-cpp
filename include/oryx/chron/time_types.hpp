@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <array>
 
 namespace oryx::chron {
 
@@ -40,5 +41,8 @@ enum class Months : uint8_t {
     December = 12,
     Last = December
 };
+
+inline constexpr std::array<Months, 7> kMonthsWith31{Months::January, Months::March,   Months::May,     Months::July,
+                                                     Months::August,  Months::October, Months::December};
 
 }  // namespace oryx::chron

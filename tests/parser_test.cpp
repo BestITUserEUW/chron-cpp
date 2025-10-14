@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <ranges>
 
-#include <oryx/chron/details/time_types.hpp>
 #include <oryx/chron/scheduler.hpp>
 #include <oryx/chron/parser.hpp>
 #include <oryx/chron/details/any_of.hpp>
@@ -198,18 +197,6 @@ TEST_CASE("Dates that does not exist") {
 }
 
 TEST_CASE("Date that exist in one of the months") { REQUIRE(kParseExpression("0 0 * 31 APR,MAY ?")); }
-
-TEST_CASE("Replacing text with numbers") {
-    {
-        std::string s = "SUN-TUE";
-        REQUIRE(details::ReplaceDayNameWithNumeric(s) == "0-2");
-    }
-
-    {
-        std::string s = "JAN-DEC";
-        REQUIRE(details::ReplaceMonthNameWithNumeric(s) == "1-12");
-    }
-}
 
 TEST_CASE("CachedParser caches") {
     static constexpr std::string_view kExpr = "* * * * * ?";

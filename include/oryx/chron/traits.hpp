@@ -4,6 +4,7 @@
 #include <concepts>
 #include <optional>
 #include <string_view>
+#include <type_traits>
 
 #include "chrono_types.hpp"
 #include "chron_data.hpp"
@@ -31,6 +32,11 @@ concept TimeType = std::is_enum_v<T> && requires {
 template <typename T>
 concept Parser = requires(T t, std::string_view sv) {
     { t(sv) } -> std::same_as<std::optional<ChronData>>;
+};
+
+template <typename T>
+concept Processor = requires(T t, std::string s) {
+    { T::Process(s) };
 };
 
 }  // namespace oryx::chron::traits

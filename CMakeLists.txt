@@ -67,6 +67,7 @@ file(GLOB_RECURSE ORYX_CHRON_HEADERS
 target_sources(${PROJECT_NAME} 
     PRIVATE 
         src/clock.cpp
+        src/preprocessor.cpp
         src/randomization.cpp
         src/schedule.cpp
         src/task.cpp

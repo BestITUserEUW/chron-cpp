@@ -7,11 +7,12 @@
 #include <format>
 
 #include <oryx/chron/time_types.hpp>
+#include <oryx/chron/preprocessor.hpp>
 #include <oryx/chron/details/ctre.hpp>
 #include <oryx/chron/details/string_cast.hpp>
 #include <oryx/chron/details/to_underlying.hpp>
 #include <oryx/chron/details/parser.hpp>
-#include "oryx/chron/details/in_range.hpp"
+#include <oryx/chron/details/in_range.hpp>
 
 namespace oryx::chron {
 namespace {
@@ -68,7 +69,7 @@ auto DayLimiter(const std::set<Months>& months) -> std::pair<int, int> {
         if (month == Months::February) {
             // Limit to 29 days, possibly causing delaying schedule until next leap year.
             max = std::min(max, 29);
-        } else if (std::ranges::find(details::kMonthsWith31, month) == details::kMonthsWith31.end()) {
+        } else if (std::ranges::find(kMonthsWith31, month) == kMonthsWith31.end()) {
             // Not among the months with 31 days
             max = std::min(max, 30);
         }
@@ -83,23 +84,10 @@ Randomization::Randomization()
     : twister_(random_device_()) {}
 
 auto Randomization::Parse(std::string_view cron_schedule) -> std::optional<std::string> {
-    const auto matcher = ctre::match<R"#(^\s*(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s*$)#">;
+    static constexpr auto matcher = ctre::match<R"#(^\s*(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s*$)#">;
 
-    std::string preprocessed_schedule{};
-    if (auto match = matcher(cron_schedule)) {
-        // Replace month and day names first
-        auto month = match.get<5>().to_string();
-        details::ReplaceMonthNameWithNumeric(month);
-
-        auto dow = match.get<6>().to_string();
-        details::ReplaceDayNameWithNumeric(dow);
-
-        // Merge all sections into one string
-        preprocessed_schedule = std::format("{} {} {} {} {} {}", match.get<1>().to_view(), match.get<2>().to_view(),
-                                            match.get<3>().to_view(), match.get<4>().to_view(), month, dow);
-    }
-
-    auto match = matcher(preprocessed_schedule);
+    auto preprocessed = PreprocessExpression<WeekMonthDayLiteralProcessor>(std::string(cron_schedule));
+    auto match = matcher(std::move(preprocessed));
     if (!match) [[unlikely]] {
         return std::nullopt;
     }
