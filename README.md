@@ -285,6 +285,25 @@ when using randomization, i.e. mutual exclusiveness and no extra spaces.
 | 0 R(45-15) */12 ? * * | A random minute between 45-15, inclusive, every 12 hours.
 |0 0 0 ? R(DEC-MAR) R(SAT-SUN)| On the hour, on a random month december to march, on a random weekday saturday to sunday. 
 
+## Performance
+
+These are some initial benchmarks on cron-parsing and cron randomization comparing against libcron:
+
+OS: Linux
+CPU: AMD Ryzen 9 7950X 16-Core Processor
+
+| relative |               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | Parsing randomized Expressions
+|---------:|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:-------------------------------
+|   100.0% |          102,326.11 |            9,772.68 |    1.2% |    1,013,843.99 |      548,690.22 |  1.848 |     152,240.32 |    0.3% |     23.50 | `ExpressionParser`
+|     9.2% |        1,116,211.84 |              895.89 |   40.5% |   16,046,595.84 |    5,985,076.41 |  2.681 |   2,785,616.84 |    0.0% |    247.82 | `CachedExpressionParser<NullMutex>`
+|     9.3% |        1,103,677.48 |              906.06 |   40.3% |   16,042,923.93 |    5,952,656.76 |  2.695 |   2,785,005.43 |    0.1% |    245.24 | `CachedExpressionParser<std::mutex>`
+|     7.9% |        1,298,631.94 |              770.04 |    0.2% |   13,982,049.29 |    7,033,908.92 |  1.988 |   2,239,027.96 |    0.4% |    285.72 | `libcron::CronData::create`
+
+| relative |               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | Randomization
+|---------:|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:--------------
+|   100.0% |           85,454.44 |           11,702.14 |    0.5% |      879,301.99 |      463,006.51 |  1.899 |     134,616.91 |    0.3% |     93.98 | `chron-cpp`
+|     5.7% |        1,493,531.23 |              669.55 |    0.2% |   16,608,204.87 |    8,084,464.40 |  2.054 |   2,685,597.92 |    0.4% |  1,643.85 | `libcron`
+
 ## Adding this library to your project
 
 ```cmake

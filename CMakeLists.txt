@@ -9,6 +9,7 @@ project(chron-cpp VERSION ${ORYX_CHRON_VERSION} LANGUAGES CXX)
 message(STATUS "Build ${PROJECT_NAME}: ${PROJECT_VERSION}")
 
 option(ORYX_CHRON_BUILD_SHARED_LIBS "Build shared library" ${BUILD_SHARED_LIBS})
+option(ORYX_CHRON_BUILD_BENCHMARKS "Build Benchmarks" OFF)
 option(ORYX_CHRON_BUILD_TESTS "Build tests" OFF)
 option(ORYX_CHRON_INSTALL "Install the project" OFF)
 option(ORYX_CHRON_SANITIZE_ADDRESS "Enable address sanitizer in tests" OFF)
@@ -104,6 +105,22 @@ if(ORYX_CHRON_BUILD_TESTS)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         target_compile_definitions(${test_exe} PUBLIC DOCTEST_CONFIG_USE_STD_HEADERS)
     endif()
+endif()
+
+if(ORYX_CHRON_BUILD_BENCHMARKS)
+    set(bench_exe ${PROJECT_NAME}_benchmarks)
+    include(FetchContent)
+    FetchContent_Declare(
+        libcron
+        GIT_REPOSITORY https://github.com/PerMalmberg/libcron.git
+        GIT_TAG master
+        OVERRIDE_FIND_PACKAGE
+    )
+    FetchContent_MakeAvailable(libcron)
+
+
+    add_executable(${bench_exe} benchmarks/main.cpp)
+    target_link_libraries(${bench_exe} PRIVATE ${PROJECT_NAME} libcron)
 endif()
 
 if (ORYX_CHRON_INSTALL)
