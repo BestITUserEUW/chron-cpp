@@ -37,7 +37,7 @@ public:
 
 private:
     mutable std::mutex mtx_{};
-    const std::chrono::time_zone* timezone_{};
+    const void* timezone_{};
 };
 
 static_assert(traits::Clock<LocalClock>);

@@ -46,7 +46,7 @@ auto TzClock::TrySetTimezone(std::string_view name) -> bool {
     if (!new_zone) return false;
 
     std::lock_guard lock(mtx_);
-    timezone_ = new_zone;
+    timezone_ = static_cast<const void *>(new_zone);
     return true;
 }
 
@@ -54,7 +54,7 @@ auto TzClock::UtcOffset(TimePoint now) const -> seconds {
     // If we don't have a timezone set we use utc
     std::lock_guard lock(mtx_);
     if (timezone_)
-        return timezone_->get_info(now).offset;
+        return reinterpret_cast<const time_zone *>(timezone_)->get_info(now).offset;
     else
         return 0s;
 }
